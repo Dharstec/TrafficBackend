@@ -1,0 +1,34 @@
+<ion-content class="ion-padding" style="--background:linear-gradient(135deg,#1a237e,#283593)">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh">
+    <ion-card style="width:100%;max-width:360px;border-radius:16px">
+      <ion-card-content>
+        <div class="ion-text-center ion-margin-bottom">
+          <ion-icon name="car-sport" style="font-size:48px;color:#1a237e"></ion-icon>
+          <h2 style="font-weight:700;color:#1a237e;margin:8px 0 4px">GCTP Traffic</h2>
+          <p style="color:#666;font-size:0.85rem;margin:0">Greater Chennai Traffic Police</p>
+        </div>
+
+        <ion-item fill="outline" class="ion-margin-bottom">
+          <ion-label position="floating">Email</ion-label>
+          <ion-input type="email" [(ngModel)]="email" placeholder="officer@gctp.gov.in"></ion-input>
+        </ion-item>
+
+        <ion-item fill="outline" class="ion-margin-bottom">
+          <ion-label position="floating">Password</ion-label>
+          <ion-input type="password" [(ngModel)]="password"></ion-input>
+        </ion-item>
+
+        <ion-button expand="block" (click)="login()" style="margin-top:16px">
+          <ion-icon name="log-in-outline" slot="start"></ion-icon>
+          Sign In
+        </ion-button>
+
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid #eee">
+          <p style="font-size:0.75rem;color:#999;margin:0 0 4px;font-weight:600">Demo Login:</p>
+          <p style="font-size:0.75rem;color:#999;margin:0">ravi&#64;gctp.gov.in / Field&#64;123</p>
+          <p style="font-size:0.75rem;color:#999;margin:0">supervisor&#64;gctp.gov.in</p>
+        </div>
+      </ion-card-content>
+    </ion-card>
+  </div>
+</ion-content>

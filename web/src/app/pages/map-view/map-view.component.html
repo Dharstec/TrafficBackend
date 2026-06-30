@@ -1,0 +1,50 @@
+<div class="topbar">
+  <h5 class="mb-0 fw-bold"><i class="bi bi-map me-2 text-primary"></i>City Map View</h5>
+  <div class="d-flex gap-2 align-items-center">
+    <div class="btn-group btn-group-sm">
+      <button class="btn" [class.btn-primary]="mode==='live'" [class.btn-outline-primary]="mode!=='live'" (click)="switchMode('live')">Live</button>
+      <button class="btn" [class.btn-primary]="mode==='snapshot'" [class.btn-outline-primary]="mode!=='snapshot'" (click)="switchMode('snapshot')">Snapshot</button>
+    </div>
+    <ng-container *ngIf="mode==='snapshot'">
+      <input type="date" class="form-control form-control-sm" [(ngModel)]="snapshotDate" style="width:150px" />
+      <input type="time" class="form-control form-control-sm" [(ngModel)]="snapshotTime" style="width:110px" />
+      <button class="btn btn-sm btn-success" (click)="loadSnapshot()">Go</button>
+    </ng-container>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-9">
+    <div id="city-map" style="height:560px;border-radius:12px;"></div>
+  </div>
+  <div class="col-md-3">
+    <div class="table-card h-100">
+      <h6 class="fw-bold mb-3">Congestion Legend</h6>
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <div style="width:20px;height:20px;border-radius:50%;background:#4caf50"></div>
+        <div><div class="fw-semibold small">Usual</div><div class="text-muted" style="font-size:0.75rem">1–2 mins delay</div></div>
+      </div>
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <div style="width:26px;height:26px;border-radius:50%;background:#ff9800"></div>
+        <div><div class="fw-semibold small">Normal</div><div class="text-muted" style="font-size:0.75rem">3–5 mins delay</div></div>
+      </div>
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <div style="width:32px;height:32px;border-radius:50%;background:#f44336"></div>
+        <div><div class="fw-semibold small">Intermediate</div><div class="text-muted" style="font-size:0.75rem">6–9 mins delay</div></div>
+      </div>
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <div style="width:44px;height:44px;border-radius:50%;background:#7b1fa2"></div>
+        <div><div class="fw-semibold small">Heavy</div><div class="text-muted" style="font-size:0.75rem">10+ mins delay</div></div>
+      </div>
+      <hr />
+      <h6 class="fw-bold mb-2">Junctions</h6>
+      <div *ngFor="let d of trafficData" class="mb-2 p-2 rounded" style="background:#f8f9fa">
+        <div class="small fw-semibold">{{ d.junction_name }}</div>
+        <div class="d-flex align-items-center gap-1 mt-1">
+          <span class="congestion-dot dot-{{ d.congestion_level }}"></span>
+          <span class="small text-muted">{{ d.delay_minutes }} min · {{ d.congestion_level }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

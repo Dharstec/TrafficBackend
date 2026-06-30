@@ -1,0 +1,23 @@
+<div class="sidebar">
+  <div class="logo">
+    <i class="bi bi-traffic-cone-fill me-2"></i>GCTP Monitor
+  </div>
+  <nav class="mt-2 flex-grow-1">
+    <p class="text-uppercase px-3 mt-3 mb-1" style="font-size:0.65rem;color:rgba(255,255,255,0.4);letter-spacing:1px">Traffic Tools</p>
+    <a routerLink="/dashboard" routerLinkActive="active"><i class="bi bi-speedometer2"></i>Dashboard</a>
+    <a routerLink="/live-monitor" routerLinkActive="active"><i class="bi bi-broadcast"></i>Live Monitor</a>
+    <a routerLink="/map" routerLinkActive="active"><i class="bi bi-map"></i>City Map View</a>
+
+    <p class="text-uppercase px-3 mt-3 mb-1" style="font-size:0.65rem;color:rgba(255,255,255,0.4);letter-spacing:1px">Data Management</p>
+    <a routerLink="/junctions" routerLinkActive="active"><i class="bi bi-signpost-2"></i>Junctions</a>
+    <a routerLink="/officers" routerLinkActive="active"><i class="bi bi-person-badge"></i>Police Management</a>
+  </nav>
+
+  <div class="mt-auto p-3 border-top" style="border-color:rgba(255,255,255,0.1) !important">
+    <div class="small mb-1" style="color:rgba(255,255,255,0.7)">{{ auth.currentUser?.name }}</div>
+    <div class="small mb-2" style="color:rgba(255,255,255,0.5)">{{ auth.currentUser?.role | titlecase }}</div>
+    <a (click)="auth.logout()" style="cursor:pointer;color:rgba(255,255,255,0.6);font-size:0.85rem">
+      <i class="bi bi-box-arrow-left me-1"></i>Logout
+    </a>
+  </div>
+</div>

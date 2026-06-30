@@ -1,0 +1,55 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/home"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Report Incident</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title style="font-size:1rem">Incident / Device Report</ion-card-title>
+      <ion-card-subtitle>Report road conditions, device issues, or congestion contradictions</ion-card-subtitle>
+    </ion-card-header>
+    <ion-card-content>
+
+      <ion-item fill="outline" class="ion-margin-bottom">
+        <ion-label position="floating">Incident Type *</ion-label>
+        <ion-select [(ngModel)]="form.type">
+          <ion-select-option value="device_malfunction">Device Malfunction</ion-select-option>
+          <ion-select-option value="road_condition">Road Condition</ion-select-option>
+          <ion-select-option value="contradiction">Congestion Contradiction</ion-select-option>
+          <ion-select-option value="other">Other</ion-select-option>
+        </ion-select>
+      </ion-item>
+
+      <ion-item fill="outline" class="ion-margin-bottom">
+        <ion-label position="floating">Junction</ion-label>
+        <ion-select [(ngModel)]="form.junction_id">
+          <ion-select-option [value]="null">None / General</ion-select-option>
+          <ion-select-option *ngFor="let j of junctions" [value]="j.id">{{ j.name }}</ion-select-option>
+        </ion-select>
+      </ion-item>
+
+      <ion-item fill="outline" class="ion-margin-bottom">
+        <ion-label position="floating">Description *</ion-label>
+        <ion-textarea [(ngModel)]="form.description" rows="4" placeholder="Describe the issue in detail..."></ion-textarea>
+      </ion-item>
+
+      <!-- In production: replace with camera upload -->
+      <ion-item fill="outline" class="ion-margin-bottom">
+        <ion-label position="floating">Photo URL (optional)</ion-label>
+        <ion-input [(ngModel)]="form.photo_url" placeholder="https://..."></ion-input>
+      </ion-item>
+
+      <ion-button expand="block" (click)="submit()" [disabled]="submitting">
+        <ion-spinner *ngIf="submitting" name="crescent" slot="start"></ion-spinner>
+        <ion-icon *ngIf="!submitting" name="send-outline" slot="start"></ion-icon>
+        {{ submitting ? 'Submitting...' : 'Submit Report' }}
+      </ion-button>
+
+    </ion-card-content>
+  </ion-card>
+</ion-content>

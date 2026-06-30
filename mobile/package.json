@@ -1,0 +1,42 @@
+{
+  "name": "traffic-mobile",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "ng serve --project app --port 8100",
+    "build": "ng build",
+    "android": "ionic capacitor run android",
+    "ios": "ionic capacitor run ios"
+  },
+  "dependencies": {
+    "@angular/animations": "^17.3.0",
+    "@angular/common": "^17.3.0",
+    "@angular/compiler": "^17.3.0",
+    "@angular/core": "^17.3.0",
+    "@angular/forms": "^17.3.0",
+    "@angular/platform-browser": "^17.3.0",
+    "@angular/platform-browser-dynamic": "^17.3.0",
+    "@angular/router": "^17.3.0",
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/geolocation": "^6.0.0",
+    "@capacitor/ios": "^6.0.0",
+    "@ionic/angular": "^8.0.0",
+    "ionicons": "^7.4.0",
+    "leaflet": "^1.9.4",
+    "rxjs": "^7.8.1",
+    "socket.io-client": "^4.7.4",
+    "tslib": "^2.6.2",
+    "zone.js": "^0.14.4"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "^17.3.0",
+    "@angular/cli": "^17.3.0",
+    "@angular/compiler-cli": "^17.3.0",
+    "@capacitor/cli": "^6.0.0",
+    "@ionic/cli": "^7.2.0",
+    "@types/leaflet": "^1.9.8",
+    "@types/node": "^20.11.5",
+    "typescript": "~5.4.2"
+  }
+}

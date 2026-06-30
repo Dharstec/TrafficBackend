@@ -1,0 +1,35 @@
+<div class="login-page">
+  <div class="login-card">
+    <div class="text-center mb-4">
+      <div style="background:#1a237e;color:#fff;border-radius:50%;width:60px;height:60px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+        <i class="bi bi-traffic-cone-fill fs-4"></i>
+      </div>
+      <h4 class="fw-bold mb-1">GCTP Traffic Monitor</h4>
+      <p class="text-muted small">Greater Chennai Traffic Police</p>
+    </div>
+
+    <div class="alert alert-danger py-2" *ngIf="error">{{ error }}</div>
+
+    <form (ngSubmit)="login()">
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Email</label>
+        <input type="email" class="form-control" [(ngModel)]="email" name="email" required placeholder="officer@gctp.gov.in" />
+      </div>
+      <div class="mb-4">
+        <label class="form-label fw-semibold">Password</label>
+        <input type="password" class="form-control" [(ngModel)]="password" name="password" required placeholder="••••••••" />
+      </div>
+      <button class="btn btn-primary w-100 py-2 fw-semibold" type="submit" [disabled]="loading">
+        <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+        Sign In
+      </button>
+    </form>
+
+    <div class="mt-4 pt-3 border-top">
+      <p class="text-muted small mb-1 fw-semibold">Demo Credentials:</p>
+      <p class="text-muted small mb-0">Admin: admin&#64;gctp.gov.in / Admin&#64;123</p>
+      <p class="text-muted small mb-0">Supervisor: supervisor&#64;gctp.gov.in</p>
+      <p class="text-muted small mb-0">Officer: ravi&#64;gctp.gov.in / Field&#64;123</p>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,207 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>GCTP Traffic – Coimbatore</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="showTestPanel=!showTestPanel" title="GPS Test">
+        <ion-icon name="flask-outline"></ion-icon>
+      </ion-button>
+      <ion-button (click)="goToMap()"><ion-icon name="map-outline"></ion-icon></ion-button>
+      <ion-button (click)="goToIncident()"><ion-icon name="warning-outline"></ion-icon></ion-button>
+      <ion-button (click)="logout()"><ion-icon name="log-out-outline"></ion-icon></ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+
+  <!-- Officer Card -->
+  <ion-card color="primary" style="margin:0 0 12px">
+    <ion-card-content>
+      <div style="display:flex;align-items:center;gap:12px">
+        <ion-icon name="person-circle" style="font-size:40px"></ion-icon>
+        <div>
+          <div style="font-weight:700;font-size:1rem">{{ user?.name }}</div>
+          <div style="font-size:0.8rem;opacity:0.8">{{ user?.badge_number }} · {{ user?.role | titlecase }}</div>
+        </div>
+      </div>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- ═══ 200m GPS TEST PANEL ═══════════════════════════════════ -->
+  <ion-card *ngIf="showTestPanel" style="margin:0 0 12px;border:2px solid #1a237e">
+    <ion-card-header style="background:#1a237e;color:#fff;padding:10px 16px">
+      <ion-card-title style="font-size:0.95rem;color:#fff">
+        <ion-icon name="flask-outline" style="margin-right:6px;vertical-align:middle"></ion-icon>
+        200m Geofencing Test (Real GPS)
+      </ion-card-title>
+    </ion-card-header>
+    <ion-card-content style="padding:12px">
+
+      <!-- Step indicators -->
+      <div style="display:flex;justify-content:space-between;margin-bottom:14px">
+        <div *ngFor="let s of [1,2,3,4]; let i=index"
+          style="flex:1;text-align:center;font-size:0.65rem;font-weight:700;padding:4px 2px;border-radius:6px;margin:0 2px;transition:all 0.2s"
+          [style.background]="testStep===s ? '#1a237e' : testStep>s ? '#4caf50' : '#eee'"
+          [style.color]="testStep>=s ? '#fff' : '#999'">
+          {{ s === 1 ? '1. Get GPS' : s === 2 ? '2. Drop Pin' : s === 3 ? '3. Check-in' : '4. Checkout' }}
+        </div>
+      </div>
+
+      <!-- STEP 1: Get GPS -->
+      <div *ngIf="testStep===1" style="text-align:center;padding:8px 0">
+        <div style="font-size:0.85rem;color:#555;margin-bottom:10px">
+          Tap below to get your real GPS location from the browser.
+        </div>
+        <ion-button expand="block" color="primary" [disabled]="gpsLoading" (click)="getMyGPS()">
+          <ion-spinner *ngIf="gpsLoading" name="crescent" slot="start"></ion-spinner>
+          <ion-icon *ngIf="!gpsLoading" name="locate-outline" slot="start"></ion-icon>
+          {{ gpsLoading ? 'Getting Location...' : 'Get My GPS Location' }}
+        </ion-button>
+      </div>
+
+      <!-- STEP 2: Drop junction at GPS -->
+      <div *ngIf="testStep===2" style="padding:4px 0">
+        <div style="background:#e8f5e9;border-radius:8px;padding:10px;margin-bottom:10px">
+          <div style="font-size:0.75rem;color:#388e3c;font-weight:700">YOUR LOCATION</div>
+          <div style="font-size:0.95rem;font-weight:600;color:#1b5e20">{{ myLat?.toFixed(6) }}, {{ myLng?.toFixed(6) }}</div>
+          <div *ngIf="gpsAccuracy" style="font-size:0.7rem;color:#666">Accuracy: ±{{ gpsAccuracy | number:'1.0-0' }}m</div>
+        </div>
+        <div style="font-size:0.82rem;color:#555;margin-bottom:10px">
+          Drop a test junction exactly at your current GPS. You will be 0m away — guaranteed inside 200m.
+        </div>
+        <ion-button expand="block" color="success" [disabled]="dropLoading" (click)="dropJunctionHere()">
+          <ion-spinner *ngIf="dropLoading" name="crescent" slot="start"></ion-spinner>
+          <ion-icon *ngIf="!dropLoading" name="pin-outline" slot="start"></ion-icon>
+          {{ dropLoading ? 'Creating Junction...' : 'Drop Junction At My Location' }}
+        </ion-button>
+        <ion-button expand="block" fill="outline" color="medium" size="small" (click)="testStep=1;myLat=null;myLng=null" style="margin-top:6px">
+          <ion-icon name="refresh-outline" slot="start"></ion-icon>Re-get GPS
+        </ion-button>
+      </div>
+
+      <!-- STEP 3: Test Check-in -->
+      <div *ngIf="testStep===3" style="padding:4px 0">
+        <div *ngIf="testJunction" style="background:#e3f2fd;border-radius:8px;padding:10px;margin-bottom:10px">
+          <div style="font-size:0.75rem;color:#1565c0;font-weight:700">JUNCTION CREATED</div>
+          <div style="font-size:0.9rem;font-weight:600;color:#0d47a1">{{ testJunction.name }}</div>
+          <div style="font-size:0.7rem;color:#666">{{ testJunction.lat }}, {{ testJunction.lng }}</div>
+        </div>
+        <div style="font-size:0.82rem;color:#555;margin-bottom:10px">
+          You are 0m away from the test junction. Tap Check-in — it must succeed (you are inside 200m).
+        </div>
+        <ion-button expand="block" color="success" [disabled]="checkinLoading" (click)="testCheckin()">
+          <ion-spinner *ngIf="checkinLoading" name="crescent" slot="start"></ion-spinner>
+          <ion-icon *ngIf="!checkinLoading" name="enter-outline" slot="start"></ion-icon>
+          {{ checkinLoading ? 'Checking In...' : 'Test Auto Check-in (inside 200m)' }}
+        </ion-button>
+      </div>
+
+      <!-- STEP 4: Simulate Checkout (move away) -->
+      <div *ngIf="testStep===4" style="padding:4px 0">
+        <div style="background:#e8f5e9;border-radius:8px;padding:10px;margin-bottom:10px">
+          <div style="font-size:0.75rem;color:#2e7d32;font-weight:700">CHECK-IN ACTIVE</div>
+          <div style="font-size:0.85rem;color:#1b5e20">You are checked in. Now simulate walking 250m away to trigger auto-checkout.</div>
+        </div>
+        <div style="font-size:0.82rem;color:#555;margin-bottom:10px">
+          Tapping below simulates your GPS moving 250m north — outside the 200m zone. Checkout must happen automatically.
+        </div>
+        <ion-button expand="block" color="danger" [disabled]="checkoutLoading" (click)="testCheckoutSimulate()">
+          <ion-spinner *ngIf="checkoutLoading" name="crescent" slot="start"></ion-spinner>
+          <ion-icon *ngIf="!checkoutLoading" name="walk-outline" slot="start"></ion-icon>
+          {{ checkoutLoading ? 'Simulating...' : 'Simulate: Move 250m Away (Checkout)' }}
+        </ion-button>
+      </div>
+
+      <!-- Result box -->
+      <div *ngIf="testResult" style="margin-top:12px;padding:10px;border-radius:8px;font-size:0.8rem;line-height:1.4;white-space:pre-wrap"
+           [style.background]="testResultOk ? '#e8f5e9' : '#ffebee'"
+           [style.border]="testResultOk ? '1px solid #4caf50' : '1px solid #f44336'"
+           [style.color]="testResultOk ? '#1b5e20' : '#b71c1c'">
+        <ion-icon [name]="testResultOk ? 'checkmark-circle-outline' : 'close-circle-outline'"
+                  style="vertical-align:middle;margin-right:4px"></ion-icon>
+        {{ testResult }}
+      </div>
+
+      <div style="font-size:0.68rem;color:#aaa;margin-top:10px;text-align:center">
+        Steps 1→2→3→4 test the full 200m geofencing workflow without needing to physically travel
+      </div>
+    </ion-card-content>
+  </ion-card>
+  <!-- ═══════════════════════════════════════════════════════════ -->
+
+  <!-- Active Check-in Status -->
+  <ion-card *ngIf="activeCheckin" style="border-left:4px solid #4caf50;margin:0 0 12px">
+    <ion-card-content>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:0.7rem;color:#666;font-weight:700;text-transform:uppercase">Checked In At</div>
+          <div style="font-weight:700;font-size:1rem;color:#1a237e">{{ activeCheckin.junction_name }}</div>
+          <div style="font-size:0.72rem;color:#999">Since {{ activeCheckin.check_in_time | date:'HH:mm' }} · {{ activeCheckin.check_in_type }}</div>
+        </div>
+        <ion-badge color="success" style="padding:6px 10px">ACTIVE</ion-badge>
+      </div>
+      <ion-button fill="outline" color="danger" size="small" (click)="doCheckout()" style="margin-top:8px">
+        <ion-icon name="exit-outline" slot="start"></ion-icon>Check Out
+      </ion-button>
+    </ion-card-content>
+  </ion-card>
+
+  <ion-card *ngIf="!activeCheckin" style="border-left:4px solid #ff9800;margin:0 0 12px">
+    <ion-card-content>
+      <div style="color:#666;font-size:0.9rem">Not checked in. Open the test panel (flask icon) to test 200m geofencing, or use manual check-in.</div>
+      <ion-button fill="outline" size="small" (click)="showManualCheckin=true" style="margin-top:8px">
+        <ion-icon name="location-outline" slot="start"></ion-icon>Manual Check-in
+      </ion-button>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Device Status Check -->
+  <ion-card *ngIf="showDeviceCheck" color="warning" style="margin:0 0 12px">
+    <ion-card-header><ion-card-title style="font-size:1rem">Device Status Check</ion-card-title></ion-card-header>
+    <ion-card-content>
+      <ion-item lines="none"><ion-label>Breath Analyzer</ion-label><ion-toggle [(ngModel)]="deviceStatus.breath_analyzer" slot="end"></ion-toggle></ion-item>
+      <ion-item lines="none"><ion-label>Body-Worn Camera</ion-label><ion-toggle [(ngModel)]="deviceStatus.body_camera" slot="end"></ion-toggle></ion-item>
+      <ion-item lines="none"><ion-label>Signal Remote</ion-label><ion-toggle [(ngModel)]="deviceStatus.signal_remote" slot="end"></ion-toggle></ion-item>
+      <ion-item lines="none"><ion-label>Challan Machine</ion-label><ion-toggle [(ngModel)]="deviceStatus.challan_machine" slot="end"></ion-toggle></ion-item>
+      <ion-button expand="block" (click)="saveDeviceStatus()" style="margin-top:8px">Save Device Status</ion-button>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Manual Check-in -->
+  <ion-card *ngIf="showManualCheckin" style="margin:0 0 12px">
+    <ion-card-header><ion-card-title style="font-size:1rem">Manual Check-in</ion-card-title></ion-card-header>
+    <ion-card-content>
+      <ion-select placeholder="Select Junction" [(ngModel)]="selectedJunctionId" fill="outline">
+        <ion-select-option *ngFor="let j of junctions" [value]="j.id">{{ j.name }}</ion-select-option>
+      </ion-select>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <ion-button expand="block" (click)="doManualCheckin()">Check In</ion-button>
+        <ion-button expand="block" fill="outline" color="medium" (click)="showManualCheckin=false">Cancel</ion-button>
+      </div>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Junction List -->
+  <div style="font-size:0.7rem;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">
+    Coimbatore Junctions
+  </div>
+  <ion-card *ngFor="let j of junctions" style="margin:0 0 8px">
+    <ion-card-content style="padding:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:0.88rem">{{ j.name }}</div>
+          <div style="font-size:0.72rem;color:#999">{{ j.station }} · {{ j.sub_division }}</div>
+          <div style="font-size:0.7rem;color:#1a237e">Officers: {{ j.active_officers || 0 }}</div>
+        </div>
+        <div style="text-align:right;min-width:70px">
+          <ng-container *ngIf="getTrafficForJunction(j.id) as t">
+            <div [style.color]="getCongestionColor(t.congestion_level)" style="font-weight:700;font-size:1.1rem">{{ t.delay_minutes }} min</div>
+            <div style="font-size:0.7rem;color:#999">{{ t.congestion_level }}</div>
+          </ng-container>
+          <div *ngIf="!getTrafficForJunction(j.id)" style="color:#ccc;font-size:0.8rem">No data</div>
+        </div>
+      </div>
+    </ion-card-content>
+  </ion-card>
+
+</ion-content>

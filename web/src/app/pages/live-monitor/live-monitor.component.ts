@@ -1,0 +1,154 @@
+import { Component, OnInit, OnDestroy, AfterViewInit } from '@angular/core';
+import { TrafficService } from '../../core/services/traffic.service';
+import { OfficerService } from '../../core/services/officer.service';
+import { JunctionService } from '../../core/services/junction.service';
+import { SocketService } from '../../core/services/socket.service';
+import { Subscription } from 'rxjs';
+import * as L from 'leaflet';
+
+@Component({
+  selector: 'app-live-monitor',
+  templateUrl: './live-monitor.component.html',
+})
+export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
+  trafficData: any[] = [];
+  liveOfficers: any[] = [];
+  activeTab: 'traffic' | 'officers' = 'traffic';
+  filterDistrict = '';
+  filterStation = '';
+  filterMinDelay = 0;
+  lastUpdate = new Date();
+
+  private map: L.Map;
+  private junctionLayers = new Map<number, L.CircleMarker>();
+  private officerLayers = new Map<number, L.Marker>();
+  private subs: Subscription[] = [];
+
+  constructor(
+    private trafficSvc: TrafficService,
+    private officerSvc: OfficerService,
+    private junctionSvc: JunctionService,
+    private socket: SocketService,
+  ) {}
+
+  ngOnInit() {
+    this.load();
+    this.subs.push(
+      this.socket.trafficUpdates$.subscribe(updates => {
+        updates.forEach(u => {
+          const idx = this.trafficData.findIndex(d => d.junction_id === u.junction_id);
+          if (idx >= 0) {
+            this.trafficData[idx] = { ...this.trafficData[idx], ...u };
+          }
+          this.updateMapCircle(u);
+        });
+        this.lastUpdate = new Date();
+      }),
+      this.socket.officerLocations$.subscribe(loc => {
+        this.updateOfficerMarker(loc);
+      }),
+    );
+  }
+
+  ngAfterViewInit() {
+    this.initMap();
+  }
+
+  load() {
+    this.trafficSvc.getLatest().subscribe(data => {
+      this.trafficData = data;
+      if (this.map) this.renderJunctionCircles(data);
+    });
+    this.officerSvc.getLiveLocations().subscribe(data => {
+      this.liveOfficers = data;
+      if (this.map) this.renderOfficerMarkers(data);
+    });
+  }
+
+  initMap() {
+    this.map = L.map('live-map').setView([13.0067, 80.2206], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+    }).addTo(this.map);
+
+    // Device legend
+    const legend = (L as any).control({ position: 'topright' });
+    legend.onAdd = () => {
+      const div = L.DomUtil.create('div', 'bg-white p-2 rounded shadow-sm');
+      div.innerHTML = `
+        <div class="fw-bold small mb-1">Congestion</div>
+        <div><span style="background:#4caf50;display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:4px"></span> Usual (1–2 min)</div>
+        <div><span style="background:#ff9800;display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:4px"></span> Normal (3–5 min)</div>
+        <div><span style="background:#f44336;display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:4px"></span> Intermediate (6–9 min)</div>
+        <div><span style="background:#7b1fa2;display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:4px"></span> Heavy (10+ min)</div>`;
+      return div;
+    };
+    legend.addTo(this.map);
+
+    if (this.trafficData.length) this.renderJunctionCircles(this.trafficData);
+    if (this.liveOfficers.length) this.renderOfficerMarkers(this.liveOfficers);
+  }
+
+  renderJunctionCircles(data: any[]) {
+    data.forEach(d => {
+      const color = this.trafficSvc.getCongestionColor(d.congestion_level);
+      const radius = this.trafficSvc.getCongestionRadius(d.delay_minutes || 1);
+      if (this.junctionLayers.has(d.junction_id)) {
+        const m = this.junctionLayers.get(d.junction_id)!;
+        m.setStyle({ color, fillColor: color });
+        m.setRadius(radius);
+      } else {
+        const circle = L.circleMarker([d.lat, d.lng], {
+          radius, color, fillColor: color, fillOpacity: 0.8, weight: 2,
+        }).addTo(this.map);
+        circle.bindPopup(`
+          <b>${d.junction_name}</b><br>
+          Station: ${d.station}<br>
+          Delay: <b>${d.delay_minutes} min</b><br>
+          Status: <b>${d.congestion_level}</b>
+        `);
+        this.junctionLayers.set(d.junction_id, circle);
+      }
+    });
+  }
+
+  updateMapCircle(u: any) {
+    const circle = this.junctionLayers.get(u.junction_id);
+    if (circle) {
+      const color = this.trafficSvc.getCongestionColor(u.congestion_level);
+      circle.setStyle({ color, fillColor: color });
+      circle.setRadius(this.trafficSvc.getCongestionRadius(u.delay_minutes));
+    }
+  }
+
+  renderOfficerMarkers(officers: any[]) {
+    officers.forEach(o => this.updateOfficerMarker(o));
+  }
+
+  updateOfficerMarker(o: any) {
+    if (!this.map) return;
+    const icon = L.divIcon({
+      html: `<div style="background:#1976d2;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,0.3)">${o.badge_number?.slice(-2) || 'PO'}</div>`,
+      iconSize: [28, 28], iconAnchor: [14, 14],
+    });
+    if (this.officerLayers.has(o.officer_id)) {
+      this.officerLayers.get(o.officer_id)!.setLatLng([o.lat, o.lng]);
+    } else {
+      const marker = L.marker([o.lat, o.lng], { icon }).addTo(this.map);
+      marker.bindPopup(`<b>${o.name}</b><br>Badge: ${o.badge_number}<br>Junction: ${o.junction_name || 'En route'}`);
+      this.officerLayers.set(o.officer_id, marker);
+    }
+  }
+
+  get filteredTraffic() {
+    return this.trafficData.filter(d =>
+      (!this.filterStation || d.station?.toLowerCase().includes(this.filterStation.toLowerCase())) &&
+      (!this.filterDistrict || d.district?.toLowerCase().includes(this.filterDistrict.toLowerCase())) &&
+      (d.delay_minutes >= this.filterMinDelay)
+    );
+  }
+
+  getColor(level: string) { return this.trafficSvc.getCongestionColor(level); }
+
+  ngOnDestroy() { this.subs.forEach(s => s.unsubscribe()); }
+}
