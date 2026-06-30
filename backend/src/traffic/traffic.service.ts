@@ -1,0 +1,101 @@
+import { Injectable, Inject } from '@nestjs/common';
+import { Pool } from 'pg';
+import { DB_POOL } from '../database/database.module';
+
+@Injectable()
+export class TrafficService {
+  constructor(@Inject(DB_POOL) private db: Pool) {}
+
+  async getLatest() {
+    const res = await this.db.query(`
+      SELECT DISTINCT ON (junction_id)
+        td.*, j.name AS junction_name, j.lat, j.lng, j.district, j.sub_division, j.station
+      FROM traffic_data td
+      JOIN junctions j ON j.id = td.junction_id
+      ORDER BY junction_id, time DESC
+    `);
+    return res.rows;
+  }
+
+  async getByJunction(junctionId: number, hours = 24) {
+    const res = await this.db.query(
+      `SELECT * FROM traffic_data
+       WHERE junction_id=$1 AND time > NOW() - INTERVAL '${hours} hours'
+       ORDER BY time DESC`,
+      [junctionId],
+    );
+    return res.rows;
+  }
+
+  async getHistory(junctionId: number, startDate: string, endDate: string) {
+    const res = await this.db.query(
+      `SELECT time_bucket('5 minutes', time) AS bucket,
+              AVG(delay_minutes) AS avg_delay,
+              MAX(delay_minutes) AS max_delay,
+              mode() WITHIN GROUP (ORDER BY congestion_level) AS congestion_level,
+              junction_id
+       FROM traffic_data
+       WHERE junction_id=$1 AND time BETWEEN $2 AND $3
+       GROUP BY bucket, junction_id
+       ORDER BY bucket DESC`,
+      [junctionId, startDate, endDate],
+    );
+    return res.rows;
+  }
+
+  async getCongestionSnapshot(date: string, time: string) {
+    const ts = `${date} ${time}`;
+    const res = await this.db.query(
+      `SELECT DISTINCT ON (junction_id)
+         td.*, j.name AS junction_name, j.lat, j.lng
+       FROM traffic_data td
+       JOIN junctions j ON j.id = td.junction_id
+       WHERE td.time <= $1::timestamptz
+       ORDER BY junction_id, time DESC`,
+      [ts],
+    );
+    return res.rows;
+  }
+
+  async getWeeklyReport(junctionId?: number) {
+    const filter = junctionId ? 'AND junction_id=$1' : '';
+    const params = junctionId ? [junctionId] : [];
+    const res = await this.db.query(
+      `SELECT junction_id,
+              date_trunc('day', time) AS day,
+              AVG(delay_minutes) AS avg_delay,
+              MAX(delay_minutes) AS peak_delay,
+              COUNT(*) AS readings,
+              j.name AS junction_name
+       FROM traffic_data td
+       JOIN junctions j ON j.id=td.junction_id
+       WHERE time > NOW() - INTERVAL '7 days' ${filter}
+       GROUP BY junction_id, day, j.name
+       ORDER BY day DESC, avg_delay DESC`,
+      params,
+    );
+    return res.rows;
+  }
+
+  async insertTrafficData(data: {
+    junction_id: number;
+    delay_minutes: number;
+    coming_from?: string;
+    going_to?: string;
+    speed_kmh?: number;
+  }) {
+    const level = this.getLevel(data.delay_minutes);
+    await this.db.query(
+      `INSERT INTO traffic_data (time, junction_id, delay_minutes, congestion_level, coming_from, going_to, speed_kmh)
+       VALUES (NOW(), $1, $2, $3, $4, $5, $6)`,
+      [data.junction_id, data.delay_minutes, level, data.coming_from, data.going_to, data.speed_kmh],
+    );
+  }
+
+  getLevel(delay: number): string {
+    if (delay <= 2) return 'usual';
+    if (delay <= 5) return 'normal';
+    if (delay <= 9) return 'intermediate';
+    return 'heavy';
+  }
+}
