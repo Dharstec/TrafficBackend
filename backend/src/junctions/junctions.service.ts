@@ -11,7 +11,10 @@ export class JunctionsService {
       SELECT j.*,
         (SELECT delay_minutes FROM traffic_data WHERE junction_id=j.id ORDER BY time DESC LIMIT 1) AS current_delay,
         (SELECT congestion_level FROM traffic_data WHERE junction_id=j.id ORDER BY time DESC LIMIT 1) AS current_congestion,
-        (SELECT COUNT(*) FROM check_ins WHERE junction_id=j.id AND is_active=true) AS active_officers
+        (SELECT COUNT(*) FROM check_ins WHERE junction_id=j.id AND is_active=true) AS active_officers,
+        (SELECT COUNT(*) FROM officers WHERE assigned_junction_id=j.id AND is_active=true) AS assigned_officers,
+        (SELECT json_agg(json_build_object('id',o.id,'name',o.name,'badge_number',o.badge_number))
+         FROM officers o WHERE o.assigned_junction_id=j.id AND o.is_active=true) AS assigned_officer_list
       FROM junctions j WHERE j.is_active=true ORDER BY j.id
     `);
     return res.rows;

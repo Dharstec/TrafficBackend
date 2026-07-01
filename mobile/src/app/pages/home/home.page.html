@@ -155,7 +155,18 @@
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div style="flex:1">
           <div style="font-weight:600;font-size:0.85rem">{{ j.short_name }}</div>
-          <div style="font-size:0.68rem;color:#999">{{ j.station }} · Officers: {{ j.active_officers || 0 }}</div>
+          <div style="font-size:0.68rem;color:#999">
+            {{ j.station }} ·
+            <span *ngIf="+j.active_officers > 0" style="color:#2e7d32;font-weight:600">
+              {{ j.active_officers }} on duty
+            </span>
+            <span *ngIf="+j.active_officers === 0 && +j.assigned_officers > 0" style="color:#ff9800">
+              {{ j.assigned_officers }} assigned
+            </span>
+            <span *ngIf="+j.active_officers === 0 && +j.assigned_officers === 0" style="color:#bbb">
+              No officers
+            </span>
+          </div>
         </div>
         <ng-container *ngIf="getTrafficForJunction(j.id) as t">
           <div style="text-align:right">
