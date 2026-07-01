@@ -9,6 +9,7 @@ import { OfficersModule } from './officers/officers.module';
 import { CheckinsModule } from './checkins/checkins.module';
 import { IncidentsModule } from './incidents/incidents.module';
 import { GatewayModule } from './gateway/gateway.module';
+import { JunctionRoutesModule } from './junction-routes/junction-routes.module';
 import { SimulatorService } from './simulator/simulator.service';
 
 @Module({
@@ -22,6 +23,7 @@ import { SimulatorService } from './simulator/simulator.service';
     OfficersModule,
     CheckinsModule,
     IncidentsModule,
+    JunctionRoutesModule,
   ],
   providers: [SimulatorService],
 })

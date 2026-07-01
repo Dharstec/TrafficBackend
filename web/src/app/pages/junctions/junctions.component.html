@@ -3,17 +3,17 @@
   <button class="btn btn-primary btn-sm" (click)="openAdd()"><i class="bi bi-plus-lg me-1"></i>Add Junction</button>
 </div>
 
-<!-- Add/Edit Form -->
+<!-- Add/Edit Junction Form -->
 <div class="table-card mb-4" *ngIf="showForm">
   <h6 class="fw-bold mb-3">{{ editId ? 'Edit' : 'Add' }} Junction</h6>
   <div class="row g-3">
     <div class="col-md-6">
       <label class="form-label small">Junction Name *</label>
-      <input class="form-control" [(ngModel)]="form.name" placeholder="e.g. Anna Salai X Mount Road Jn" />
+      <input class="form-control" [(ngModel)]="form.name" placeholder="e.g. Kovais Brew Cafe Junction" />
     </div>
     <div class="col-md-3">
       <label class="form-label small">Short Name</label>
-      <input class="form-control" [(ngModel)]="form.short_name" placeholder="e.g. AnnaSalai-MR" />
+      <input class="form-control" [(ngModel)]="form.short_name" placeholder="e.g. KovaisBrew" />
     </div>
     <div class="col-md-3">
       <label class="form-label small">District</label>
@@ -21,67 +21,188 @@
     </div>
     <div class="col-md-3">
       <label class="form-label small">Sub Division</label>
-      <input class="form-control" [(ngModel)]="form.sub_division" placeholder="e.g. South" />
+      <input class="form-control" [(ngModel)]="form.sub_division" />
     </div>
     <div class="col-md-3">
       <label class="form-label small">Station</label>
-      <input class="form-control" [(ngModel)]="form.station" placeholder="e.g. Velachery" />
+      <input class="form-control" [(ngModel)]="form.station" />
     </div>
     <div class="col-md-3">
-      <label class="form-label small">Latitude</label>
-      <input class="form-control" [(ngModel)]="form.lat" placeholder="13.0058" />
+      <label class="form-label small">Latitude (junction center)</label>
+      <input class="form-control" [(ngModel)]="form.lat" placeholder="11.0916080" />
     </div>
     <div class="col-md-3">
-      <label class="form-label small">Longitude</label>
-      <input class="form-control" [(ngModel)]="form.lng" placeholder="80.2133" />
+      <label class="form-label small">Longitude (junction center)</label>
+      <input class="form-control" [(ngModel)]="form.lng" placeholder="76.9888760" />
     </div>
   </div>
   <div class="mt-3 d-flex gap-2">
-    <button class="btn btn-primary btn-sm" (click)="save()">Save</button>
+    <button class="btn btn-primary btn-sm" (click)="save()">Save Junction</button>
     <button class="btn btn-outline-secondary btn-sm" (click)="showForm=false">Cancel</button>
   </div>
 </div>
 
+<!-- Junctions Table -->
 <div class="table-card">
   <div class="table-responsive">
     <table class="table table-hover align-middle">
       <thead class="table-light">
         <tr>
-          <th>#</th><th>Junction Name</th><th>District</th><th>Sub Division</th><th>Station</th>
-          <th>Current Status</th><th>Delay</th><th>Officers</th><th>Actions</th>
+          <th>#</th>
+          <th>Junction Name</th>
+          <th>District / Station</th>
+          <th>Status</th>
+          <th>Delay</th>
+          <th>Officers</th>
+          <th>Routes</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let j of junctions">
-          <td class="text-muted small">{{ j.id }}</td>
-          <td>
-            <div class="fw-semibold">{{ j.name }}</div>
-            <div class="text-muted" style="font-size:0.75rem">{{ j.lat }}, {{ j.lng }}</div>
-          </td>
-          <td class="small">{{ j.district }}</td>
-          <td class="small">{{ j.sub_division }}</td>
-          <td class="small">{{ j.station }}</td>
-          <td>
-            <span *ngIf="j.current_congestion" class="badge badge-{{ j.current_congestion }}">
-              {{ j.current_congestion | titlecase }}
-            </span>
-            <span *ngIf="!j.current_congestion" class="text-muted small">No data</span>
-          </td>
-          <td class="fw-bold small">{{ j.current_delay ? (j.current_delay | number:'1.1-1') + ' min' : '—' }}</td>
-          <td class="small">
-            <span *ngIf="+j.active_officers > 0" class="badge bg-success me-1" title="Currently on duty">
-              {{ j.active_officers }} on duty
-            </span>
-            <span *ngIf="+j.assigned_officers > 0" class="badge bg-warning text-dark" title="Assigned to this junction">
-              {{ j.assigned_officers }} assigned
-            </span>
-            <span *ngIf="+j.active_officers === 0 && +j.assigned_officers === 0" class="text-muted">—</span>
-          </td>
-          <td>
-            <button class="btn btn-sm btn-outline-primary me-1" (click)="openEdit(j)"><i class="bi bi-pencil"></i></button>
-            <button class="btn btn-sm btn-outline-danger" (click)="delete(j.id)"><i class="bi bi-trash"></i></button>
-          </td>
-        </tr>
+        <ng-container *ngFor="let j of junctions">
+          <!-- Junction Row -->
+          <tr>
+            <td class="text-muted small">{{ j.id }}</td>
+            <td>
+              <div class="fw-semibold">{{ j.name }}</div>
+              <div class="text-muted" style="font-size:0.72rem">{{ j.lat }}, {{ j.lng }}</div>
+            </td>
+            <td class="small">
+              <div>{{ j.district }}</div>
+              <div class="text-muted">{{ j.station }}</div>
+            </td>
+            <td>
+              <span *ngIf="j.current_congestion" class="badge badge-{{ j.current_congestion }}">
+                {{ j.current_congestion | titlecase }}
+              </span>
+              <span *ngIf="!j.current_congestion" class="text-muted small">No data</span>
+            </td>
+            <td class="fw-bold small">{{ j.current_delay ? (j.current_delay | number:'1.1-1') + ' min' : '—' }}</td>
+            <td class="small">
+              <span *ngIf="+j.active_officers > 0" class="badge bg-success me-1">{{ j.active_officers }} on duty</span>
+              <span *ngIf="+j.assigned_officers > 0" class="badge bg-warning text-dark">{{ j.assigned_officers }} assigned</span>
+              <span *ngIf="+j.active_officers === 0 && +j.assigned_officers === 0" class="text-muted">—</span>
+            </td>
+            <td>
+              <button class="btn btn-sm btn-outline-info" (click)="toggleRoutes(j)">
+                <i class="bi bi-signpost-split me-1"></i>
+                Routes
+                <span class="badge bg-info ms-1" *ngIf="routesByJunction[j.id]">{{ routesByJunction[j.id]?.length }}</span>
+                <i class="bi" [class.bi-chevron-down]="expandedJunctionId !== j.id" [class.bi-chevron-up]="expandedJunctionId === j.id"></i>
+              </button>
+            </td>
+            <td>
+              <button class="btn btn-sm btn-outline-primary me-1" (click)="openEdit(j)"><i class="bi bi-pencil"></i></button>
+              <button class="btn btn-sm btn-outline-danger" (click)="delete(j.id)"><i class="bi bi-trash"></i></button>
+            </td>
+          </tr>
+
+          <!-- Expanded Routes Panel -->
+          <tr *ngIf="expandedJunctionId === j.id">
+            <td colspan="8" style="background:#f8f9ff;padding:16px 24px">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <div>
+                  <h6 class="fw-bold mb-0 text-info">
+                    <i class="bi bi-signpost-split me-1"></i>
+                    Road Routes for {{ j.name }}
+                  </h6>
+                  <div class="text-muted small mt-1">
+                    Junction center: <b>{{ j.lat }}, {{ j.lng }}</b>
+                    — Destination for all routes below is auto-set to this point.
+                  </div>
+                </div>
+                <button class="btn btn-sm btn-info text-white" (click)="openAddRoute(j)" *ngIf="!showRouteForm">
+                  <i class="bi bi-plus-lg me-1"></i>Add Route
+                </button>
+              </div>
+
+              <!-- How to find origin explanation -->
+              <div class="alert alert-light border small py-2 mb-3" *ngIf="!routesByJunction[j.id]?.length && !showRouteForm">
+                <i class="bi bi-info-circle me-1 text-info"></i>
+                <b>How to get Origin coordinates:</b>
+                Open Google Maps → go to the junction → move 500m–1km along each incoming road → right-click → "What's here?" → copy the lat, lng.
+              </div>
+
+              <!-- Add/Edit Route Form -->
+              <div class="card mb-3" *ngIf="showRouteForm && routeForm.junction_id === j.id">
+                <div class="card-body py-3">
+                  <h6 class="fw-bold mb-3 text-info">{{ editRouteId ? 'Edit' : 'Add' }} Route</h6>
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label small fw-semibold">Road Name / Coming From *</label>
+                      <input class="form-control" [(ngModel)]="routeForm.coming_from"
+                        placeholder="e.g. Avinashi Road (from West)" />
+                      <div class="form-text">Describe which road and direction traffic comes from.</div>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small fw-semibold">Origin Latitude *</label>
+                      <input class="form-control" [(ngModel)]="routeForm.origin_lat"
+                        placeholder="e.g. 11.0916" />
+                      <div class="form-text">~500m–1km before junction on this road.</div>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small fw-semibold">Origin Longitude *</label>
+                      <input class="form-control" [(ngModel)]="routeForm.origin_lng"
+                        placeholder="e.g. 76.9789" />
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small fw-semibold">Destination Lat</label>
+                      <input class="form-control bg-light" [(ngModel)]="routeForm.dest_lat" readonly />
+                      <div class="form-text text-success">Auto-set to junction center.</div>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small fw-semibold">Destination Lng</label>
+                      <input class="form-control bg-light" [(ngModel)]="routeForm.dest_lng" readonly />
+                    </div>
+                    <div class="col-12">
+                      <div class="d-flex gap-2">
+                        <button class="btn btn-info btn-sm text-white" [disabled]="savingRoute" (click)="saveRoute()">
+                          <span *ngIf="savingRoute" class="spinner-border spinner-border-sm me-1"></span>
+                          {{ editRouteId ? 'Update' : 'Save' }} Route
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" (click)="cancelRoute()">Cancel</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Routes List -->
+              <table class="table table-sm align-middle mb-0" *ngIf="routesByJunction[j.id]?.length">
+                <thead class="table-light">
+                  <tr>
+                    <th>Traffic Coming From (Road)</th>
+                    <th>Origin Point</th>
+                    <th>Destination</th>
+                    <th>Current Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let r of routesByJunction[j.id]">
+                    <td class="fw-semibold small">{{ r.coming_from }}</td>
+                    <td class="text-muted small">{{ r.origin_lat }}, {{ r.origin_lng }}</td>
+                    <td class="text-muted small">{{ r.dest_lat }}, {{ r.dest_lng }}</td>
+                    <td>
+                      <span *ngIf="r.congestion_level" class="badge badge-{{ r.congestion_level }}">
+                        {{ r.delay_minutes }} min · {{ r.congestion_level | titlecase }}
+                      </span>
+                      <span *ngIf="!r.congestion_level" class="text-muted small">No data yet</span>
+                    </td>
+                    <td>
+                      <button class="btn btn-sm btn-outline-primary me-1" (click)="openEditRoute(r)"><i class="bi bi-pencil"></i></button>
+                      <button class="btn btn-sm btn-outline-danger" (click)="deleteRoute(r)"><i class="bi bi-trash"></i></button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div *ngIf="!routesByJunction[j.id]?.length && !showRouteForm" class="text-center text-muted py-2 small">
+                No routes defined yet. Click "Add Route" to define each incoming road.
+              </div>
+            </td>
+          </tr>
+        </ng-container>
       </tbody>
     </table>
   </div>

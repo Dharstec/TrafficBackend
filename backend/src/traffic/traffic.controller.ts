@@ -10,6 +10,9 @@ export class TrafficController {
   @Get('latest')
   getLatest() { return this.service.getLatest(); }
 
+  @Get('routes/latest')
+  getRoutesLatest() { return this.service.getLatestRouteTraffic(); }
+
   @Get('junction/:id')
   getByJunction(@Param('id') id: string, @Query('hours') hours?: string) {
     return this.service.getByJunction(+id, hours ? +hours : 24);

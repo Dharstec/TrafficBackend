@@ -58,12 +58,12 @@
           <tbody style="font-size:0.78rem">
             <tr *ngFor="let d of freeFlowTraffic">
               <td>
-                <div class="fw-semibold" style="line-height:1.2">{{ d.junction_name }}</div>
+                <div class="fw-semibold" style="line-height:1.2">{{ d.coming_from || d.junction_name }}</div>
                 <div class="text-muted" style="font-size:0.68rem">{{ d.station }}</div>
               </td>
               <td>
-                <div style="color:#1565c0;font-size:0.75rem">{{ d.short_name }}</div>
-                <div class="text-muted" style="font-size:0.65rem">{{ d.active_officer || '—' }}</div>
+                <div style="color:#1565c0;font-size:0.75rem">{{ d.junction_name }}</div>
+                <div class="text-muted" style="font-size:0.65rem">{{ d.short_name }}</div>
               </td>
               <td class="text-center">
                 <span class="congestion-dot dot-{{ d.congestion_level }}" style="width:14px;height:14px;display:inline-block;border-radius:50%"></span>
@@ -119,12 +119,12 @@
           <tbody style="font-size:0.78rem">
             <tr *ngFor="let d of usualTraffic">
               <td>
-                <div class="fw-semibold" style="line-height:1.2">{{ d.junction_name }}</div>
+                <div class="fw-semibold" style="line-height:1.2">{{ d.coming_from || d.junction_name }}</div>
                 <div class="text-muted" style="font-size:0.68rem">{{ d.station }}</div>
               </td>
               <td>
-                <div style="color:#1565c0;font-size:0.75rem">{{ d.short_name }}</div>
-                <div class="text-muted" style="font-size:0.65rem">{{ d.active_officer || '—' }}</div>
+                <div style="color:#1565c0;font-size:0.75rem">{{ d.junction_name }}</div>
+                <div class="text-muted" style="font-size:0.65rem">{{ d.short_name }}</div>
               </td>
               <td class="text-center">
                 <span class="congestion-dot dot-{{ d.congestion_level }}" style="width:14px;height:14px;display:inline-block;border-radius:50%"></span>

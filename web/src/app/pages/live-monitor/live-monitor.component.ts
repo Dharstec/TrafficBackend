@@ -3,6 +3,7 @@ import { TrafficService } from '../../core/services/traffic.service';
 import { OfficerService } from '../../core/services/officer.service';
 import { JunctionService } from '../../core/services/junction.service';
 import { SocketService } from '../../core/services/socket.service';
+import { JunctionRouteService } from '../../core/services/junction-route.service';
 import { Subscription } from 'rxjs';
 import * as L from 'leaflet';
 
@@ -11,10 +12,15 @@ import * as L from 'leaflet';
   templateUrl: './live-monitor.component.html',
 })
 export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
-  trafficData: any[] = [];
+  trafficData: any[] = [];      // junction-level (fallback)
+  routeTrafficData: any[] = []; // route-level (preferred)
   liveOfficers: any[] = [];
   todayDuty: any[] = [];
   heavyAlerts: any[] = [];
+
+  get hasRoutes() { return this.routeTrafficData.length > 0; }
+  // Use route data if available, else junction data
+  get displayData() { return this.hasRoutes ? this.routeTrafficData : this.trafficData; }
   activeTab: 'map' | 'officers' | 'duty' = 'map';
   lastUpdate = new Date();
 
@@ -34,6 +40,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     private officerSvc: OfficerService,
     private junctionSvc: JunctionService,
     private socket: SocketService,
+    private routeSvc: JunctionRouteService,
   ) {}
 
   ngOnInit() {
@@ -65,7 +72,14 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadTodayDuty();
     this.trafficSvc.getLatest().subscribe(data => {
       this.trafficData = data;
-      if (this.map) this.renderJunctionCircles(data);
+      if (this.map && !this.hasRoutes) this.renderJunctionCircles(data);
+    });
+    // Load route-level traffic (preferred when routes exist)
+    this.routeSvc.getLatestTraffic().subscribe(data => {
+      this.routeTrafficData = data;
+      if (this.map && data.length > 0) this.renderJunctionCircles(data.map(r => ({
+        ...r, lat: r.junction_lat, lng: r.junction_lng,
+      })));
     });
     this.officerSvc.getLiveLocations().subscribe(data => {
       this.liveOfficers = data;
@@ -79,24 +93,26 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
 
   acknowledgeAlert(i: number) { this.heavyAlerts[i].acknowledged = true; }
 
-  // Delay from Free Flow — sorted by highest total travel time
+  // Delay from Free Flow — sorted by highest delay, routes preferred
   get freeFlowTraffic() {
-    return this.trafficData
+    return this.displayData
       .filter(d =>
         (!this.searchFreeFlow ||
           d.junction_name?.toLowerCase().includes(this.searchFreeFlow.toLowerCase()) ||
+          d.coming_from?.toLowerCase().includes(this.searchFreeFlow.toLowerCase()) ||
           d.station?.toLowerCase().includes(this.searchFreeFlow.toLowerCase())) &&
         (!this.filterFreeFlow || d.congestion_level === this.filterFreeFlow)
       )
       .sort((a, b) => (+b.delay_minutes || 0) - (+a.delay_minutes || 0));
   }
 
-  // Delay from Usual Traffic — sorted by highest additional delay vs usual
+  // Delay from Usual Traffic — sorted by highest unusual delay
   get usualTraffic() {
-    return this.trafficData
+    return this.displayData
       .filter(d =>
         (!this.searchUsual ||
           d.junction_name?.toLowerCase().includes(this.searchUsual.toLowerCase()) ||
+          d.coming_from?.toLowerCase().includes(this.searchUsual.toLowerCase()) ||
           d.station?.toLowerCase().includes(this.searchUsual.toLowerCase())) &&
         (!this.filterUsual || d.congestion_level === this.filterUsual)
       )
