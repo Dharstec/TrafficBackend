@@ -9,7 +9,7 @@ export class JunctionsComponent implements OnInit {
   junctions: any[] = [];
   showForm = false;
   editId: number | null = null;
-  form = { name: '', short_name: '', district: 'Chennai', sub_division: '', station: '', lat: '', lng: '' };
+  form = { name: '', short_name: '', district: 'Coimbatore', sub_division: '', station: '', lat: '', lng: '' };
 
   constructor(private svc: JunctionService) {}
 
@@ -17,7 +17,7 @@ export class JunctionsComponent implements OnInit {
 
   load() { this.svc.getAll().subscribe(d => this.junctions = d); }
 
-  openAdd() { this.showForm = true; this.editId = null; this.form = { name: '', short_name: '', district: 'Chennai', sub_division: '', station: '', lat: '', lng: '' }; }
+  openAdd() { this.showForm = true; this.editId = null; this.form = { name: '', short_name: '', district: 'Coimbatore', sub_division: '', station: '', lat: '', lng: '' }; }
 
   openEdit(j: any) {
     this.showForm = true;

@@ -14,9 +14,20 @@ export class OfficersComponent implements OnInit {
   incidents: any[] = [];
   activeTab: 'officers' | 'incidents' = 'officers';
   showForm = false;
-  form = { name: '', badge_number: '', phone: '', email: '', password: 'Field@123', role: 'field_officer', assigned_junction_id: '' };
+  editId: number | null = null;
+  saving = false;
+  errorMsg = '';
 
-  constructor(private svc: OfficerService, private junctionSvc: JunctionService, private http: HttpClient) {}
+  form = {
+    name: '', badge_number: '', phone: '', email: '',
+    password: '', role: 'field_officer', assigned_junction_id: '', is_active: true,
+  };
+
+  constructor(
+    private svc: OfficerService,
+    private junctionSvc: JunctionService,
+    private http: HttpClient,
+  ) {}
 
   ngOnInit() { this.load(); }
 
@@ -26,15 +37,60 @@ export class OfficersComponent implements OnInit {
     this.svc.getIncidents().subscribe(d => this.incidents = d);
   }
 
+  openAdd() {
+    this.editId = null;
+    this.errorMsg = '';
+    this.form = { name: '', badge_number: '', phone: '', email: '', password: '', role: 'field_officer', assigned_junction_id: '', is_active: true };
+    this.showForm = true;
+  }
+
+  openEdit(o: any) {
+    this.editId = o.id;
+    this.errorMsg = '';
+    this.form = {
+      name: o.name,
+      badge_number: o.badge_number,
+      phone: o.phone || '',
+      email: o.email,
+      password: '',
+      role: o.role,
+      assigned_junction_id: o.assigned_junction_id || '',
+      is_active: o.is_active,
+    };
+    this.showForm = true;
+  }
+
   save() {
-    this.svc.create(this.form).subscribe(() => { this.showForm = false; this.load(); });
+    this.saving = true;
+    this.errorMsg = '';
+
+    const payload: any = {
+      name: this.form.name,
+      phone: this.form.phone,
+      role: this.form.role,
+      assigned_junction_id: this.form.assigned_junction_id || null,
+      is_active: this.form.is_active,
+    };
+
+    let obs;
+    if (this.editId) {
+      obs = this.http.put(`${environment.apiUrl}/officers/${this.editId}`, payload);
+    } else {
+      obs = this.svc.create({
+        ...payload,
+        badge_number: this.form.badge_number,
+        email: this.form.email,
+        password: this.form.password || 'Field@123',
+      });
+    }
+
+    obs.subscribe({
+      next: () => { this.saving = false; this.showForm = false; this.load(); },
+      error: (e: any) => { this.saving = false; this.errorMsg = e?.error?.message || 'Failed to save officer'; },
+    });
   }
 
   resolveIncident(id: number) {
     this.http.put(`${environment.apiUrl}/incidents/${id}/resolve`, {}).subscribe(() => this.load());
-  }
-
-  getStatusClass(s: string) {
-    return { 'badge-success': s === 'open', 'bg-warning': s === 'in_progress', 'bg-secondary': s === 'resolved' };
   }
 }

@@ -87,7 +87,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   initMap() {
-    this.map = L.map('live-map').setView([13.0067, 80.2206], 12);
+    this.map = L.map('live-map').setView([11.0168, 76.9558], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
     }).addTo(this.map);
@@ -120,17 +120,29 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
         m.setRadius(radius);
       } else {
         const circle = L.circleMarker([d.lat, d.lng], {
-          radius, color, fillColor: color, fillOpacity: 0.8, weight: 2,
+          radius, color, fillColor: color, fillOpacity: 0.85, weight: 2,
         }).addTo(this.map);
+        circle.bindTooltip(d.short_name || d.junction_name, {
+          permanent: true, direction: 'top',
+          offset: [0, -radius - 2],
+          className: 'junction-web-label',
+          opacity: 1,
+        });
         circle.bindPopup(`
           <b>${d.junction_name}</b><br>
           Station: ${d.station}<br>
           Delay: <b>${d.delay_minutes} min</b><br>
-          Status: <b>${d.congestion_level}</b>
+          Status: <b style="color:${color}">${d.congestion_level?.toUpperCase()}</b>
         `);
         this.junctionLayers.set(d.junction_id, circle);
       }
     });
+
+    // Auto-fit map to show all junctions (works for 5 or 500)
+    if (data.length > 0) {
+      const bounds = L.latLngBounds(data.map(d => [d.lat, d.lng] as [number, number]));
+      this.map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
+    }
   }
 
   updateMapCircle(u: any) {
