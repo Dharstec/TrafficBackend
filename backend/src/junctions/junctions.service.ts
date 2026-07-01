@@ -36,9 +36,13 @@ export class JunctionsService {
 
   async update(id: number, data: any) {
     const res = await this.db.query(
-      `UPDATE junctions SET name=$1, short_name=$2, district=$3, sub_division=$4, station=$5, is_active=$6
-       WHERE id=$7 RETURNING *`,
-      [data.name, data.short_name, data.district, data.sub_division, data.station, data.is_active, id],
+      `UPDATE junctions
+       SET name=$1, short_name=$2, district=$3, sub_division=$4, station=$5,
+           lat=$6, lng=$7,
+           is_active = COALESCE($8, is_active)
+       WHERE id=$9 RETURNING *`,
+      [data.name, data.short_name, data.district, data.sub_division, data.station,
+       data.lat, data.lng, data.is_active ?? null, id],
     );
     return res.rows[0];
   }

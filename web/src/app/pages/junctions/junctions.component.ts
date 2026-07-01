@@ -10,7 +10,7 @@ export class JunctionsComponent implements OnInit {
   junctions: any[] = [];
   showForm = false;
   editId: number | null = null;
-  form = { name: '', short_name: '', district: 'Coimbatore', sub_division: '', station: '', lat: '', lng: '' };
+  form: any = { name: '', short_name: '', district: 'Coimbatore', sub_division: '', station: '', lat: '', lng: '', is_active: true };
 
   // Route management
   expandedJunctionId: number | null = null;
@@ -31,12 +31,22 @@ export class JunctionsComponent implements OnInit {
 
   openAdd() {
     this.showForm = true; this.editId = null;
-    this.form = { name: '', short_name: '', district: 'Coimbatore', sub_division: '', station: '', lat: '', lng: '' };
+    this.form = { name: '', short_name: '', district: 'Coimbatore', sub_division: '', station: '', lat: '', lng: '', is_active: true };
   }
 
   openEdit(j: any) {
     this.showForm = true; this.editId = j.id;
-    this.form = { name: j.name, short_name: j.short_name, district: j.district, sub_division: j.sub_division, station: j.station, lat: j.lat, lng: j.lng };
+    this.expandedJunctionId = null; // close routes panel
+    this.form = {
+      name: j.name,
+      short_name: j.short_name,
+      district: j.district,
+      sub_division: j.sub_division,
+      station: j.station,
+      lat: j.lat,
+      lng: j.lng,
+      is_active: j.is_active ?? true,
+    };
   }
 
   save() {
