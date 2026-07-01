@@ -29,62 +29,75 @@ export class SimulatorService {
     }
   }
 
-  // Uses Google Directions API — widely enabled, returns duration_in_traffic
-  private async fetchGoogleDelay(
-    lat: number,
-    lng: number,
-  ): Promise<{ delay: number; source: string }> {
+  // Fetch BOTH current traffic AND usual traffic (same time next week = historical pattern)
+  private async fetchGoogleData(lat: number, lng: number): Promise<{
+    delay: number;
+    usualDelay: number;
+    totalSeconds: number;
+    usualSeconds: number;
+    freeFlowSeconds: number;
+    source: string;
+  }> {
     const googleKey = process.env.GOOGLE_MAPS_API_KEY;
     if (!googleKey) {
-      return { delay: this.fallbackDelay(), source: 'simulator' };
+      const delay = this.fallbackDelay();
+      return { delay, usualDelay: 0, totalSeconds: 0, usualSeconds: 0, freeFlowSeconds: 0, source: 'simulator' };
     }
 
-    // Destination ~400m northeast — short segment to measure traffic on this road
     const destLat = lat + 0.002;
     const destLng = lng + 0.002;
-    const url =
+
+    // Current live traffic
+    const currentUrl =
       `https://maps.googleapis.com/maps/api/directions/json` +
-      `?origin=${lat},${lng}` +
-      `&destination=${destLat},${destLng}` +
-      `&departure_time=now` +
-      `&traffic_model=best_guess` +
-      `&key=${googleKey}`;
+      `?origin=${lat},${lng}&destination=${destLat},${destLng}` +
+      `&departure_time=now&traffic_model=best_guess&key=${googleKey}`;
+
+    // Same time next week — Google uses historical patterns for future timestamps
+    const nextWeekTs = Math.floor((Date.now() + 7 * 24 * 3600 * 1000) / 1000);
+    const usualUrl =
+      `https://maps.googleapis.com/maps/api/directions/json` +
+      `?origin=${lat},${lng}&destination=${destLat},${destLng}` +
+      `&departure_time=${nextWeekTs}&traffic_model=best_guess&key=${googleKey}`;
 
     try {
-      const res = await fetch(url);
+      const [currentRes, usualRes] = await Promise.all([
+        fetch(currentUrl).then(r => r.json()),
+        fetch(usualUrl).then(r => r.json()),
+      ]);
 
-      if (!res.ok) {
-        this.log.error(`[Google] HTTP ${res.status}`);
-        return { delay: this.fallbackDelay(), source: 'simulator' };
+      if (currentRes.status !== 'OK') {
+        this.log.error(`[Google] Current failed: ${currentRes.status} ${currentRes.error_message || ''}`);
+        const delay = this.fallbackDelay();
+        return { delay, usualDelay: 0, totalSeconds: 0, usualSeconds: 0, freeFlowSeconds: 0, source: 'simulator' };
       }
 
-      const data: any = await res.json();
+      const leg = currentRes.routes[0].legs[0];
+      const freeFlowSeconds: number = leg.duration?.value ?? 0;
+      const totalSeconds: number = leg.duration_in_traffic?.value ?? freeFlowSeconds;
+      const delayFromFreeFlow = Math.max(0, totalSeconds - freeFlowSeconds);
+      const delay = Math.round((delayFromFreeFlow / 60) * 10) / 10;
 
-      if (data.status !== 'OK') {
-        this.log.error(
-          `[Google] Status=${data.status} ${data.error_message || ''}`,
-        );
-        return { delay: this.fallbackDelay(), source: 'simulator' };
+      let usualSeconds = totalSeconds;
+      let usualDelay = 0;
+
+      if (usualRes.status === 'OK') {
+        const usualLeg = usualRes.routes[0].legs[0];
+        usualSeconds = usualLeg.duration_in_traffic?.value ?? usualLeg.duration?.value ?? totalSeconds;
+        const usualDelayMs = Math.max(0, totalSeconds - usualSeconds);
+        usualDelay = Math.round((usualDelayMs / 60) * 10) / 10;
       }
-
-      const leg = data.routes?.[0]?.legs?.[0];
-      if (!leg) return { delay: this.fallbackDelay(), source: 'simulator' };
-
-      // duration_in_traffic = travel time with live traffic
-      // duration = free-flow travel time
-      const withTraffic =
-        leg.duration_in_traffic?.value ?? leg.duration?.value ?? 0;
-      const noTraffic = leg.duration?.value ?? 0;
-      const delaySec = Math.max(0, withTraffic - noTraffic);
-      const delayMin = Math.round((delaySec / 60) * 10) / 10;
 
       this.log.log(
-        `[Google] lat=${lat} lng=${lng} traffic=${withTraffic}s free=${noTraffic}s delay=${delayMin}min`,
+        `[Google] lat=${lat} total=${totalSeconds}s usual=${usualSeconds}s freeFlow=${freeFlowSeconds}s ` +
+        `delay=${delay}min usualDelay=${usualDelay}min`,
       );
-      return { delay: delayMin, source: 'google' };
+
+      return { delay, usualDelay, totalSeconds, usualSeconds, freeFlowSeconds, source: 'google' };
     } catch (e: any) {
-      this.log.error(`[Google] Fetch error: ${e.message}`);
-      return { delay: this.fallbackDelay(), source: 'simulator' };
+      this.log.error(`[Google] Error: ${e.message}`);
+      const delay = this.fallbackDelay();
+      return { delay, usualDelay: 0, totalSeconds: 0, usualSeconds: 0, freeFlowSeconds: 0, source: 'simulator' };
     }
   }
 
@@ -110,20 +123,25 @@ export class SimulatorService {
 
     const googleKey = process.env.GOOGLE_MAPS_API_KEY;
     this.log.log(
-      `Running simulation for ${this.junctions.length} junctions | Google API: ${googleKey ? 'YES (' + googleKey.slice(0, 8) + '...)' : 'NO — using simulator'}`,
+      `Simulation: ${this.junctions.length} junctions | Google: ${googleKey ? 'YES' : 'NO'}`,
     );
 
     const updates: any[] = [];
 
     for (const j of this.junctions) {
-      const { delay, source } = await this.fetchGoogleDelay(+j.lat, +j.lng);
+      const { delay, usualDelay, totalSeconds, usualSeconds, freeFlowSeconds, source } =
+        await this.fetchGoogleData(+j.lat, +j.lng);
+
       const level = this.getLevel(delay);
       const speedKmh = Math.max(5, Math.round(60 - delay * 5));
 
       await this.db.query(
-        `INSERT INTO traffic_data (time, junction_id, delay_minutes, congestion_level, speed_kmh, source)
-         VALUES (NOW(), $1, $2, $3, $4, $5)`,
-        [j.id, delay, level, speedKmh, source],
+        `INSERT INTO traffic_data
+           (time, junction_id, delay_minutes, usual_delay_minutes,
+            total_seconds, usual_seconds, free_flow_seconds,
+            congestion_level, speed_kmh, source)
+         VALUES (NOW(), $1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [j.id, delay, usualDelay, totalSeconds, usualSeconds, freeFlowSeconds, level, speedKmh, source],
       );
 
       const update = {
@@ -131,6 +149,9 @@ export class SimulatorService {
         junction_name: j.name,
         short_name: j.short_name,
         delay_minutes: delay,
+        usual_delay_minutes: usualDelay,
+        total_seconds: totalSeconds,
+        usual_seconds: usualSeconds,
         congestion_level: level,
         speed_kmh: speedKmh,
         source,
@@ -145,9 +166,7 @@ export class SimulatorService {
 
     this.gateway.broadcastTrafficUpdate(updates);
     const googleCount = updates.filter(u => u.source === 'google').length;
-    this.log.log(
-      `Updated ${updates.length} junctions | Google: ${googleCount} | Simulator: ${updates.length - googleCount}`,
-    );
+    this.log.log(`Updated ${updates.length} junctions | Google: ${googleCount} | Simulator: ${updates.length - googleCount}`);
   }
 
   async runOnce() {

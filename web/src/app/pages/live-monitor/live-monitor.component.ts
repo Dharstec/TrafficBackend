@@ -15,11 +15,14 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   liveOfficers: any[] = [];
   todayDuty: any[] = [];
   heavyAlerts: any[] = [];
-  activeTab: 'traffic' | 'officers' | 'duty' = 'traffic';
-  filterDistrict = '';
-  filterStation = '';
-  filterMinDelay = 0;
+  activeTab: 'map' | 'officers' | 'duty' = 'map';
   lastUpdate = new Date();
+
+  // Filters for each panel
+  searchFreeFlow = '';
+  filterFreeFlow = '';
+  searchUsual = '';
+  filterUsual = '';
 
   private map: L.Map;
   private junctionLayers = new Map<number, L.CircleMarker>();
@@ -40,7 +43,8 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
         updates.forEach(u => {
           const idx = this.trafficData.findIndex(d => d.junction_id === u.junction_id);
           if (idx >= 0) this.trafficData[idx] = { ...this.trafficData[idx], ...u };
-          this.updateMapCircle(u);
+          else this.trafficData.push(u);
+          if (this.map) this.updateMapCircle(u);
         });
         this.lastUpdate = new Date();
       }),
@@ -75,6 +79,30 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
 
   acknowledgeAlert(i: number) { this.heavyAlerts[i].acknowledged = true; }
 
+  // Delay from Free Flow — sorted by highest total travel time
+  get freeFlowTraffic() {
+    return this.trafficData
+      .filter(d =>
+        (!this.searchFreeFlow ||
+          d.junction_name?.toLowerCase().includes(this.searchFreeFlow.toLowerCase()) ||
+          d.station?.toLowerCase().includes(this.searchFreeFlow.toLowerCase())) &&
+        (!this.filterFreeFlow || d.congestion_level === this.filterFreeFlow)
+      )
+      .sort((a, b) => (+b.delay_minutes || 0) - (+a.delay_minutes || 0));
+  }
+
+  // Delay from Usual Traffic — sorted by highest additional delay vs usual
+  get usualTraffic() {
+    return this.trafficData
+      .filter(d =>
+        (!this.searchUsual ||
+          d.junction_name?.toLowerCase().includes(this.searchUsual.toLowerCase()) ||
+          d.station?.toLowerCase().includes(this.searchUsual.toLowerCase())) &&
+        (!this.filterUsual || d.congestion_level === this.filterUsual)
+      )
+      .sort((a, b) => (+b.usual_delay_minutes || 0) - (+a.usual_delay_minutes || 0));
+  }
+
   formatDuration(min: number): string {
     if (!min || min < 1) return '< 1m';
     const h = Math.floor(min / 60); const m = Math.round(min % 60);
@@ -92,16 +120,18 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
       attribution: '© OpenStreetMap contributors',
     }).addTo(this.map);
 
-    // Device legend
     const legend = (L as any).control({ position: 'topright' });
     legend.onAdd = () => {
       const div = L.DomUtil.create('div', 'bg-white p-2 rounded shadow-sm');
+      div.style.fontSize = '0.75rem';
       div.innerHTML = `
-        <div class="fw-bold small mb-1">Congestion</div>
-        <div><span style="background:#4caf50;display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:4px"></span> Usual (1–2 min)</div>
-        <div><span style="background:#ff9800;display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:4px"></span> Normal (3–5 min)</div>
-        <div><span style="background:#f44336;display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:4px"></span> Intermediate (6–9 min)</div>
-        <div><span style="background:#7b1fa2;display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:4px"></span> Heavy (10+ min)</div>`;
+        <div class="fw-bold mb-1">Congestion</div>
+        <div><span style="background:#4caf50;display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px"></span>Usual</div>
+        <div><span style="background:#ff9800;display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px"></span>Normal</div>
+        <div><span style="background:#f44336;display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px"></span>Intermediate</div>
+        <div><span style="background:#7b1fa2;display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px"></span>Heavy</div>
+        <hr class="my-1">
+        <div><span style="background:#1976d2;display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px"></span>Officer</div>`;
       return div;
     };
     legend.addTo(this.map);
@@ -112,8 +142,8 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
 
   renderJunctionCircles(data: any[]) {
     data.forEach(d => {
-      const color = this.trafficSvc.getCongestionColor(d.congestion_level);
-      const radius = this.trafficSvc.getCongestionRadius(d.delay_minutes || 1);
+      const color = this.getCongestionColor(d.congestion_level);
+      const radius = Math.min(8 + (+d.delay_minutes || 1), 24);
       if (this.junctionLayers.has(d.junction_id)) {
         const m = this.junctionLayers.get(d.junction_id)!;
         m.setStyle({ color, fillColor: color });
@@ -131,14 +161,14 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
         circle.bindPopup(`
           <b>${d.junction_name}</b><br>
           Station: ${d.station}<br>
-          Delay: <b>${d.delay_minutes} min</b><br>
+          Delay (free flow): <b>${d.delay_minutes} min</b><br>
+          Delay (vs usual): <b>${d.usual_delay_minutes > 0 ? '+' + d.usual_delay_minutes + ' min' : 'No delay'}</b><br>
           Status: <b style="color:${color}">${d.congestion_level?.toUpperCase()}</b>
         `);
         this.junctionLayers.set(d.junction_id, circle);
       }
     });
 
-    // Auto-fit map to show all junctions (works for 5 or 500)
     if (data.length > 0) {
       const bounds = L.latLngBounds(data.map(d => [d.lat, d.lng] as [number, number]));
       this.map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
@@ -148,9 +178,9 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   updateMapCircle(u: any) {
     const circle = this.junctionLayers.get(u.junction_id);
     if (circle) {
-      const color = this.trafficSvc.getCongestionColor(u.congestion_level);
+      const color = this.getCongestionColor(u.congestion_level);
       circle.setStyle({ color, fillColor: color });
-      circle.setRadius(this.trafficSvc.getCongestionRadius(u.delay_minutes));
+      circle.setRadius(Math.min(8 + (+u.delay_minutes || 1), 24));
     }
   }
 
@@ -173,15 +203,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  get filteredTraffic() {
-    return this.trafficData.filter(d =>
-      (!this.filterStation || d.station?.toLowerCase().includes(this.filterStation.toLowerCase())) &&
-      (!this.filterDistrict || d.district?.toLowerCase().includes(this.filterDistrict.toLowerCase())) &&
-      (d.delay_minutes >= this.filterMinDelay)
-    );
-  }
-
-  getColor(level: string) { return this.trafficSvc.getCongestionColor(level); }
+  getColor(level: string) { return this.getCongestionColor(level); }
 
   ngOnDestroy() { this.subs.forEach(s => s.unsubscribe()); }
 }

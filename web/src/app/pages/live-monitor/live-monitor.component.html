@@ -4,7 +4,9 @@
 </div>
 
 <!-- Heavy Traffic Alerts -->
-<div *ngFor="let alert of heavyAlerts; let i=index" class="alert alert-danger d-flex align-items-center justify-content-between py-2 mb-2" [class.opacity-50]="alert.acknowledged">
+<div *ngFor="let alert of heavyAlerts; let i=index"
+  class="alert alert-danger d-flex align-items-center justify-content-between py-2 mb-2"
+  [class.opacity-50]="alert.acknowledged">
   <div>
     <i class="bi bi-exclamation-triangle-fill me-2"></i>
     <strong>HEAVY TRAFFIC</strong> at <strong>{{ alert.junction_name || alert.short_name }}</strong>
@@ -15,37 +17,142 @@
   <span class="badge bg-secondary" *ngIf="alert.acknowledged">Acknowledged</span>
 </div>
 
-<!-- Filters -->
-<div class="table-card mb-3">
-  <div class="row g-2 align-items-end">
-    <div class="col-md-3">
-      <label class="form-label small fw-semibold mb-1">District</label>
-      <input class="form-control form-control-sm" placeholder="All districts" [(ngModel)]="filterDistrict" />
+<!-- Two Flow Traffic Panels -->
+<div class="row g-3 mb-3">
+
+  <!-- LEFT: Delay from Free Flow Traffic -->
+  <div class="col-md-6">
+    <div class="table-card h-100">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <h6 class="fw-bold mb-0 text-danger">
+          <i class="bi bi-speedometer2 me-1"></i>Delay From Free Flow Traffic
+        </h6>
+        <span class="badge bg-secondary small">{{ freeFlowTraffic.length }} junctions</span>
+      </div>
+
+      <div class="row g-1 mb-2">
+        <div class="col-8">
+          <input class="form-control form-control-sm" placeholder="Search junction / station..." [(ngModel)]="searchFreeFlow" />
+        </div>
+        <div class="col-4">
+          <select class="form-select form-select-sm" [(ngModel)]="filterFreeFlow">
+            <option value="">All</option>
+            <option value="usual">Usual</option>
+            <option value="normal">Normal</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="heavy">Heavy</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-responsive" style="max-height:420px;overflow-y:auto">
+        <table class="table table-hover table-sm align-middle mb-0">
+          <thead class="table-light sticky-top" style="font-size:0.72rem">
+            <tr>
+              <th>Traffic Coming From<br><span class="text-muted fw-normal">Station</span></th>
+              <th>Signal / Junction Info<br><span class="text-muted fw-normal">Active Officer</span></th>
+              <th class="text-center">Status</th>
+              <th class="text-end">Travel<br>Time</th>
+            </tr>
+          </thead>
+          <tbody style="font-size:0.78rem">
+            <tr *ngFor="let d of freeFlowTraffic">
+              <td>
+                <div class="fw-semibold" style="line-height:1.2">{{ d.junction_name }}</div>
+                <div class="text-muted" style="font-size:0.68rem">{{ d.station }}</div>
+              </td>
+              <td>
+                <div style="color:#1565c0;font-size:0.75rem">{{ d.short_name }}</div>
+                <div class="text-muted" style="font-size:0.65rem">{{ d.active_officer || '—' }}</div>
+              </td>
+              <td class="text-center">
+                <span class="congestion-dot dot-{{ d.congestion_level }}" style="width:14px;height:14px;display:inline-block;border-radius:50%"></span>
+              </td>
+              <td class="text-end fw-bold" style="white-space:nowrap">
+                {{ d.total_seconds ? (d.total_seconds / 60 | number:'1.0-0') + ' mins' : d.delay_minutes + ' mins' }}
+              </td>
+            </tr>
+            <tr *ngIf="!freeFlowTraffic.length">
+              <td colspan="4" class="text-center text-muted py-3">No data</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
-    <div class="col-md-3">
-      <label class="form-label small fw-semibold mb-1">Station</label>
-      <input class="form-control form-control-sm" placeholder="All stations" [(ngModel)]="filterStation" />
-    </div>
-    <div class="col-md-3">
-      <label class="form-label small fw-semibold mb-1">Min Delay (mins)</label>
-      <select class="form-select form-select-sm" [(ngModel)]="filterMinDelay">
-        <option [value]="0">All</option>
-        <option [value]="3">3+ mins (Normal)</option>
-        <option [value]="6">6+ mins (Intermediate)</option>
-        <option [value]="10">10+ mins (Heavy)</option>
-      </select>
-    </div>
-    <div class="col-md-3 d-flex gap-2">
-      <button class="btn btn-sm btn-outline-secondary" (click)="filterDistrict='';filterStation='';filterMinDelay=0">Clear</button>
+  </div>
+
+  <!-- RIGHT: Delay from Usual Traffic -->
+  <div class="col-md-6">
+    <div class="table-card h-100">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <h6 class="fw-bold mb-0 text-warning">
+          <i class="bi bi-clock-history me-1"></i>Delay From Usual Traffic
+        </h6>
+        <span class="badge bg-secondary small">{{ usualTraffic.length }} junctions</span>
+      </div>
+
+      <div class="row g-1 mb-2">
+        <div class="col-8">
+          <input class="form-control form-control-sm" placeholder="Search junction / station..." [(ngModel)]="searchUsual" />
+        </div>
+        <div class="col-4">
+          <select class="form-select form-select-sm" [(ngModel)]="filterUsual">
+            <option value="">All</option>
+            <option value="usual">Usual</option>
+            <option value="normal">Normal</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="heavy">Heavy</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-responsive" style="max-height:420px;overflow-y:auto">
+        <table class="table table-hover table-sm align-middle mb-0">
+          <thead class="table-light sticky-top" style="font-size:0.72rem">
+            <tr>
+              <th>Traffic Coming From<br><span class="text-muted fw-normal">Station</span></th>
+              <th>Signal / Junction Info<br><span class="text-muted fw-normal">Active Officer</span></th>
+              <th class="text-center">Status</th>
+              <th class="text-end">Additional<br>Travel Time<br><span class="text-muted fw-normal">Usual Time</span></th>
+            </tr>
+          </thead>
+          <tbody style="font-size:0.78rem">
+            <tr *ngFor="let d of usualTraffic">
+              <td>
+                <div class="fw-semibold" style="line-height:1.2">{{ d.junction_name }}</div>
+                <div class="text-muted" style="font-size:0.68rem">{{ d.station }}</div>
+              </td>
+              <td>
+                <div style="color:#1565c0;font-size:0.75rem">{{ d.short_name }}</div>
+                <div class="text-muted" style="font-size:0.65rem">{{ d.active_officer || '—' }}</div>
+              </td>
+              <td class="text-center">
+                <span class="congestion-dot dot-{{ d.congestion_level }}" style="width:14px;height:14px;display:inline-block;border-radius:50%"></span>
+              </td>
+              <td class="text-end" style="white-space:nowrap">
+                <div class="fw-bold" [style.color]="d.usual_delay_minutes > 0 ? '#d32f2f' : '#2e7d32'">
+                  {{ d.usual_delay_minutes > 0 ? '+ ' + d.usual_delay_minutes + ' mins' : 'No Delay' }}
+                </div>
+                <div class="text-muted" style="font-size:0.68rem">
+                  {{ d.usual_seconds ? (d.usual_seconds / 60 | number:'1.0-0') + ' mins' : '—' }}
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="!usualTraffic.length">
+              <td colspan="4" class="text-center text-muted py-3">No data</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- Tabs -->
+<!-- Tabs: Officers + Map -->
 <ul class="nav nav-tabs mb-3">
   <li class="nav-item">
-    <a class="nav-link" [class.active]="activeTab==='traffic'" (click)="activeTab='traffic'" style="cursor:pointer">
-      <i class="bi bi-car-front me-1"></i>Traffic ({{ filteredTraffic.length }})
+    <a class="nav-link" [class.active]="activeTab==='map'" (click)="activeTab='map'" style="cursor:pointer">
+      <i class="bi bi-map me-1"></i>Live Map
     </a>
   </li>
   <li class="nav-item">
@@ -60,104 +167,65 @@
   </li>
 </ul>
 
-<!-- Split: Table + Map -->
-<div class="row g-3">
-  <div class="col-md-5">
-    <!-- Traffic Tab -->
-    <div class="table-card" *ngIf="activeTab==='traffic'">
-      <div class="table-responsive" style="max-height:460px;overflow-y:auto">
-        <table class="table table-hover table-sm align-middle mb-0">
-          <thead class="table-light sticky-top">
-            <tr>
-              <th>Traffic Coming From / Station</th>
-              <th>Signal / Junction Info</th>
-              <th>Status</th>
-              <th>Travel Time</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let d of filteredTraffic">
-              <td>
-                <div class="fw-semibold small">{{ d.coming_from || 'Various' }}</div>
-                <div class="text-muted" style="font-size:0.75rem">{{ d.station }}</div>
-              </td>
-              <td>
-                <a href="#" class="small text-primary" (click)="$event.preventDefault()">{{ d.junction_name }}</a>
-              </td>
-              <td>
-                <span class="congestion-dot dot-{{ d.congestion_level }}"></span>
-              </td>
-              <td class="fw-bold small">{{ d.delay_minutes }} mins</td>
-            </tr>
-            <tr *ngIf="!filteredTraffic.length">
-              <td colspan="4" class="text-center text-muted py-3">No data matching filters</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+<!-- Map -->
+<div *ngIf="activeTab==='map'">
+  <div id="live-map" style="height:500px;border-radius:12px;"></div>
+</div>
 
-    <!-- Officers Tab -->
-    <div class="table-card" *ngIf="activeTab==='officers'">
-      <div class="table-responsive" style="max-height:460px;overflow-y:auto">
-        <table class="table table-hover table-sm align-middle mb-0">
-          <thead class="table-light sticky-top">
-            <tr><th>Officer</th><th>Badge</th><th>Junction</th><th>Status</th><th>Last Seen</th></tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let o of liveOfficers">
-              <td class="fw-semibold small">{{ o.name }}</td>
-              <td class="text-muted small">{{ o.badge_number }}</td>
-              <td class="small">{{ o.junction_name || '—' }}</td>
-              <td>
-                <span class="badge" [class.bg-success]="o.junction_name" [class.bg-secondary]="!o.junction_name">
-                  {{ o.junction_name ? 'AT JUNCTION' : 'MOVING' }}
-                </span>
-              </td>
-              <td class="text-muted" style="font-size:0.75rem">{{ o.time | date:'HH:mm' }}</td>
-            </tr>
-            <tr *ngIf="!liveOfficers.length">
-              <td colspan="5" class="text-center text-muted py-3">No officers online</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Today's Duty Tab -->
-    <div class="table-card" *ngIf="activeTab==='duty'">
-      <div class="table-responsive" style="max-height:460px;overflow-y:auto">
-        <table class="table table-hover table-sm align-middle mb-0">
-          <thead class="table-light sticky-top">
-            <tr><th>Officer</th><th>Junction</th><th>Check-in</th><th>Check-out</th><th>Duration</th><th>Status</th></tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let d of todayDuty">
-              <td>
-                <div class="fw-semibold small">{{ d.officer_name }}</div>
-                <div class="text-muted" style="font-size:0.7rem">{{ d.badge_number }}</div>
-              </td>
-              <td class="small">{{ d.short_name }}</td>
-              <td class="small">{{ d.check_in_time | date:'HH:mm' }}</td>
-              <td class="small text-muted">{{ d.check_out_time ? (d.check_out_time | date:'HH:mm') : '—' }}</td>
-              <td class="fw-bold small" [class.text-success]="d.is_active">{{ formatDuration(d.duration_minutes) }}</td>
-              <td>
-                <span class="badge" [class.bg-success]="d.is_active" [class.bg-secondary]="!d.is_active">
-                  {{ d.is_active ? 'ACTIVE' : 'DONE' }}
-                </span>
-              </td>
-            </tr>
-            <tr *ngIf="!todayDuty.length">
-              <td colspan="6" class="text-center text-muted py-3">No duty records today</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+<!-- Officers Tab -->
+<div class="table-card" *ngIf="activeTab==='officers'">
+  <div class="table-responsive" style="max-height:400px;overflow-y:auto">
+    <table class="table table-hover table-sm align-middle mb-0">
+      <thead class="table-light sticky-top">
+        <tr><th>Officer</th><th>Badge</th><th>Junction</th><th>Status</th><th>Last Seen</th></tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let o of liveOfficers">
+          <td class="fw-semibold small">{{ o.name }}</td>
+          <td class="text-muted small">{{ o.badge_number }}</td>
+          <td class="small">{{ o.junction_name || '—' }}</td>
+          <td>
+            <span class="badge" [class.bg-success]="o.junction_name" [class.bg-secondary]="!o.junction_name">
+              {{ o.junction_name ? 'AT JUNCTION' : 'MOVING' }}
+            </span>
+          </td>
+          <td class="text-muted" style="font-size:0.75rem">{{ o.time | date:'HH:mm' }}</td>
+        </tr>
+        <tr *ngIf="!liveOfficers.length">
+          <td colspan="5" class="text-center text-muted py-3">No officers online</td>
+        </tr>
+      </tbody>
+    </table>
   </div>
+</div>
 
-  <!-- Map -->
-  <div class="col-md-7">
-    <div id="live-map" style="height:500px;border-radius:12px;"></div>
+<!-- Today's Duty Tab -->
+<div class="table-card" *ngIf="activeTab==='duty'">
+  <div class="table-responsive" style="max-height:400px;overflow-y:auto">
+    <table class="table table-hover table-sm align-middle mb-0">
+      <thead class="table-light sticky-top">
+        <tr><th>Officer</th><th>Junction</th><th>Check-in</th><th>Check-out</th><th>Duration</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let d of todayDuty">
+          <td>
+            <div class="fw-semibold small">{{ d.officer_name }}</div>
+            <div class="text-muted" style="font-size:0.7rem">{{ d.badge_number }}</div>
+          </td>
+          <td class="small">{{ d.short_name }}</td>
+          <td class="small">{{ d.check_in_time | date:'HH:mm' }}</td>
+          <td class="small text-muted">{{ d.check_out_time ? (d.check_out_time | date:'HH:mm') : '—' }}</td>
+          <td class="fw-bold small" [class.text-success]="d.is_active">{{ formatDuration(d.duration_minutes) }}</td>
+          <td>
+            <span class="badge" [class.bg-success]="d.is_active" [class.bg-secondary]="!d.is_active">
+              {{ d.is_active ? 'ACTIVE' : 'DONE' }}
+            </span>
+          </td>
+        </tr>
+        <tr *ngIf="!todayDuty.length">
+          <td colspan="6" class="text-center text-muted py-3">No duty records today</td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </div>
