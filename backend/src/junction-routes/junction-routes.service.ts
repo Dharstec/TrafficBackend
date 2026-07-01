@@ -7,6 +7,8 @@ export class JunctionRoutesService {
   constructor(@Inject(DB_POOL) private db: Pool) {}
 
   async findAll() {
+    try { await this.db.query('SELECT 1 FROM junction_routes LIMIT 1'); }
+    catch (e: any) { if (e.code === '42P01') return []; throw e; }
     const res = await this.db.query(`
       SELECT jr.*,
         j.name AS junction_name, j.short_name, j.station, j.district,
@@ -31,6 +33,8 @@ export class JunctionRoutesService {
   }
 
   async findByJunction(junctionId: number) {
+    try { await this.db.query('SELECT 1 FROM junction_routes LIMIT 1'); }
+    catch (e: any) { if (e.code === '42P01') return []; throw e; }
     const res = await this.db.query(
       `SELECT jr.*,
         (SELECT delay_minutes FROM route_traffic_data WHERE route_id=jr.id ORDER BY time DESC LIMIT 1) AS delay_minutes,
@@ -71,6 +75,8 @@ export class JunctionRoutesService {
 
   // Returns all active routes with origin/dest coords — used by simulator
   async findAllActive() {
+    try { await this.db.query('SELECT 1 FROM junction_routes LIMIT 1'); }
+    catch (e: any) { if (e.code === '42P01') return []; throw e; }
     const res = await this.db.query(`
       SELECT jr.id, jr.junction_id, jr.coming_from,
              jr.origin_lat, jr.origin_lng, jr.dest_lat, jr.dest_lng,
@@ -84,17 +90,23 @@ export class JunctionRoutesService {
   }
 
   async getLatestRouteTraffic() {
-    const res = await this.db.query(`
-      SELECT DISTINCT ON (rtd.route_id)
-        rtd.*, jr.coming_from, jr.junction_id,
-        j.name AS junction_name, j.short_name, j.station, j.district,
-        j.lat AS junction_lat, j.lng AS junction_lng
-      FROM route_traffic_data rtd
-      JOIN junction_routes jr ON jr.id = rtd.route_id
-      JOIN junctions j ON j.id = jr.junction_id
-      WHERE jr.is_active = true
-      ORDER BY rtd.route_id, rtd.time DESC
-    `);
-    return res.rows;
+    try {
+      const res = await this.db.query(`
+        SELECT DISTINCT ON (rtd.route_id)
+          rtd.*, jr.coming_from, jr.junction_id,
+          j.name AS junction_name, j.short_name, j.station, j.district,
+          j.lat AS junction_lat, j.lng AS junction_lng
+        FROM route_traffic_data rtd
+        JOIN junction_routes jr ON jr.id = rtd.route_id
+        JOIN junctions j ON j.id = jr.junction_id
+        WHERE jr.is_active = true
+        ORDER BY rtd.route_id, rtd.time DESC
+      `);
+      return res.rows;
+    } catch (e: any) {
+      // Tables not created yet — return empty, not 500
+      if (e.code === '42P01') return [];
+      throw e;
+    }
   }
 }
