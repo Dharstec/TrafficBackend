@@ -18,11 +18,11 @@ export class CheckinsService {
     const nearby = await this.db.query(
       `SELECT id, name, ${HAVERSINE_SQL} AS distance_meters
        FROM junctions
-       WHERE is_active = true AND ${HAVERSINE_SQL} <= 500
+       WHERE is_active = true AND ${HAVERSINE_SQL} <= 200
        ORDER BY distance_meters ASC LIMIT 1`,
       [lat, lng, lat, lng],
     );
-    if (!nearby.rows.length) return { checked_in: false, message: 'No junction within 500 meters' };
+    if (!nearby.rows.length) return { checked_in: false, message: 'No junction within 200 meters' };
 
     const junction = nearby.rows[0];
     const existing = await this.db.query(
@@ -64,7 +64,7 @@ export class CheckinsService {
 
     const row = active.rows[0];
     const dist = haversineMeters(lat, lng, +row.jlat, +row.jlng);
-    if (dist <= 500) return { checked_out: false, message: 'Still within 500 meters' };
+    if (dist <= 200) return { checked_out: false, message: 'Still within 200 meters' };
 
     await this.db.query(
       `UPDATE check_ins SET is_active=false, check_out_time=NOW(), check_out_type='auto' WHERE officer_id=$1 AND is_active=true`,

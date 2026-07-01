@@ -70,7 +70,7 @@
 
   <ion-card *ngIf="!activeCheckin" style="border-left:4px solid #ff9800;margin:0 0 12px">
     <ion-card-content>
-      <div style="color:#666;font-size:0.9rem">Not checked in. Move within 500m of a junction for auto check-in.</div>
+      <div style="color:#666;font-size:0.9rem">Not checked in. Move within 200m of a junction for auto check-in.</div>
 
       <!-- Live GPS Status -->
       <div style="margin-top:10px;padding:8px;background:#f5f5f5;border-radius:8px;font-size:0.72rem">
@@ -216,7 +216,7 @@
 
       <div *ngIf="testStep===3">
         <div style="background:#e3f2fd;border-radius:8px;padding:10px;margin-bottom:10px;font-size:0.8rem">
-          <b>Junction at your location.</b> You are 0m away — inside 500m zone.
+          <b>Junction at your location.</b> You are 0m away — inside 200m zone.
         </div>
         <ion-button expand="block" color="success" [disabled]="checkinLoading" (click)="testCheckin()">
           <ion-spinner *ngIf="checkinLoading" name="crescent" slot="start"></ion-spinner>
