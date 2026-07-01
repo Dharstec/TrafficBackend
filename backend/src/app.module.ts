@@ -8,12 +8,13 @@ import { TrafficModule } from './traffic/traffic.module';
 import { OfficersModule } from './officers/officers.module';
 import { CheckinsModule } from './checkins/checkins.module';
 import { IncidentsModule } from './incidents/incidents.module';
-import { TrafficGateway } from './gateway/traffic.gateway';
+import { GatewayModule } from './gateway/gateway.module';
 import { SimulatorService } from './simulator/simulator.service';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
+    GatewayModule,
     DatabaseModule,
     AuthModule,
     JunctionsModule,
@@ -22,7 +23,7 @@ import { SimulatorService } from './simulator/simulator.service';
     CheckinsModule,
     IncidentsModule,
   ],
-  providers: [TrafficGateway, SimulatorService],
+  providers: [SimulatorService],
 })
 export class AppModule implements OnModuleInit {
   constructor(private simulator: SimulatorService) {}

@@ -21,7 +21,13 @@ export class HomePage implements OnInit, OnDestroy {
   showDeviceCheck = false;
   clearingTraffic = false;
 
-  // GPS test panel
+  // Live GPS status (visible to all)
+  currentLat: number | null = null;
+  currentLng: number | null = null;
+  currentAccuracy: number | null = null;
+  lastCheckinResponse: string = '';
+
+  // GPS test panel (supervisor/admin only)
   showTestPanel = false;
   myLat: number | null = null;
   myLng: number | null = null;
@@ -49,8 +55,18 @@ export class HomePage implements OnInit, OnDestroy {
   ngOnInit() {
     this.user = this.auth.user;
     this.load();
-    this.geo.startTracking(15000);
+    this.geo.startTracking();
     this.subs.push(
+      this.geo.position$.subscribe(pos => {
+        this.currentLat = pos.lat;
+        this.currentLng = pos.lng;
+        this.currentAccuracy = pos.accuracy || null;
+      }),
+      this.geo.checkinResult$.subscribe(result => {
+        this.lastCheckinResponse = result?.checked_in
+          ? `✓ Checked in: ${result.junction?.name}`
+          : `Not in range: ${result?.message || ''}`;
+      }),
       this.geo.nearbyJunction$.subscribe(junction => {
         if (junction) this.showAutoCheckinAlert(junction);
         else { this.activeCheckin = null; this.toast('Auto checkout — moved beyond 200m', 'warning'); }

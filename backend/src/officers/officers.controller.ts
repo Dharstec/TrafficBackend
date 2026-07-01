@@ -1,12 +1,16 @@
 import { Controller, Get, Post, Put, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { OfficersService } from './officers.service';
+import { TrafficGateway } from '../gateway/traffic.gateway';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard, Roles } from '../auth/roles.guard';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('officers')
 export class OfficersController {
-  constructor(private service: OfficersService) {}
+  constructor(
+    private service: OfficersService,
+    private gateway: TrafficGateway,
+  ) {}
 
   @Get()
   findAll() { return this.service.findAll(); }
@@ -31,7 +35,24 @@ export class OfficersController {
   update(@Param('id') id: string, @Body() body: any) { return this.service.update(+id, body); }
 
   @Post('location')
-  updateLocation(@Request() req, @Body() body: { lat: number; lng: number; accuracy?: number }) {
-    return this.service.updateLocation(req.user.id, body.lat, body.lng, body.accuracy);
+  async updateLocation(
+    @Request() req,
+    @Body() body: { lat: number; lng: number; accuracy?: number },
+  ) {
+    await this.service.updateLocation(req.user.id, body.lat, body.lng, body.accuracy);
+
+    // Broadcast live position to admin/supervisor web dashboards
+    this.gateway.broadcastOfficerLocation({
+      officer_id: req.user.id,
+      name: req.user.name,
+      badge_number: req.user.badge_number,
+      role: req.user.role,
+      lat: body.lat,
+      lng: body.lng,
+      accuracy: body.accuracy,
+      time: new Date(),
+    });
+
+    return { ok: true };
   }
 }

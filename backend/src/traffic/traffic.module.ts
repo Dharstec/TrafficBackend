@@ -1,10 +1,9 @@
 import { Module } from '@nestjs/common';
 import { TrafficService } from './traffic.service';
 import { TrafficController } from './traffic.controller';
-import { TrafficGateway } from '../gateway/traffic.gateway';
 
 @Module({
-  providers: [TrafficService, TrafficGateway],
+  providers: [TrafficService],
   controllers: [TrafficController],
   exports: [TrafficService],
 })
