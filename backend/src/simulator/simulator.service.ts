@@ -29,65 +29,52 @@ export class SimulatorService {
     }
   }
 
+  // Uses Google Directions API — widely enabled, returns duration_in_traffic
   private async fetchGoogleDelay(
     lat: number,
     lng: number,
   ): Promise<{ delay: number; source: string }> {
-    // Read key dynamically so it works even if env loaded after class init
     const googleKey = process.env.GOOGLE_MAPS_API_KEY;
-
     if (!googleKey) {
       return { delay: this.fallbackDelay(), source: 'simulator' };
     }
 
-    // Short route ~400m northeast — measures live traffic on this road segment
-    const body = {
-      origin: { location: { latLng: { latitude: lat, longitude: lng } } },
-      destination: {
-        location: {
-          latLng: { latitude: lat + 0.002, longitude: lng + 0.002 },
-        },
-      },
-      travelMode: 'DRIVE',
-      routingPreference: 'TRAFFIC_AWARE',
-      departureTime: new Date().toISOString(),
-    };
+    // Destination ~400m northeast — short segment to measure traffic on this road
+    const destLat = lat + 0.002;
+    const destLng = lng + 0.002;
+    const url =
+      `https://maps.googleapis.com/maps/api/directions/json` +
+      `?origin=${lat},${lng}` +
+      `&destination=${destLat},${destLng}` +
+      `&departure_time=now` +
+      `&traffic_model=best_guess` +
+      `&key=${googleKey}`;
 
     try {
-      const res = await fetch(
-        'https://routes.googleapis.com/directions/v2:computeRoutes',
-        {
-          method: 'POST',
-          headers: {
-            'X-Goog-Api-Key': googleKey,
-            'X-Goog-FieldMask': 'routes.duration,routes.staticDuration',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(body),
-        },
-      );
+      const res = await fetch(url);
 
       if (!res.ok) {
-        const errText = await res.text();
-        this.log.error(`[Google] HTTP ${res.status}: ${errText}`);
+        this.log.error(`[Google] HTTP ${res.status}`);
         return { delay: this.fallbackDelay(), source: 'simulator' };
       }
 
       const data: any = await res.json();
 
-      if (data.error) {
-        this.log.error(`[Google] API error: ${data.error.message} (code ${data.error.code})`);
+      if (data.status !== 'OK') {
+        this.log.error(
+          `[Google] Status=${data.status} ${data.error_message || ''}`,
+        );
         return { delay: this.fallbackDelay(), source: 'simulator' };
       }
 
-      const route = data.routes?.[0];
-      if (!route) {
-        this.log.warn(`[Google] No route returned for lat=${lat} lng=${lng}`);
-        return { delay: this.fallbackDelay(), source: 'simulator' };
-      }
+      const leg = data.routes?.[0]?.legs?.[0];
+      if (!leg) return { delay: this.fallbackDelay(), source: 'simulator' };
 
-      const withTraffic = parseInt((route.duration ?? '0s').replace('s', ''), 10);
-      const noTraffic = parseInt((route.staticDuration ?? '0s').replace('s', ''), 10);
+      // duration_in_traffic = travel time with live traffic
+      // duration = free-flow travel time
+      const withTraffic =
+        leg.duration_in_traffic?.value ?? leg.duration?.value ?? 0;
+      const noTraffic = leg.duration?.value ?? 0;
       const delaySec = Math.max(0, withTraffic - noTraffic);
       const delayMin = Math.round((delaySec / 60) * 10) / 10;
 
@@ -119,7 +106,6 @@ export class SimulatorService {
 
   @Cron(CronExpression.EVERY_5_MINUTES)
   async runSimulation() {
-    // Always reload so newly added junctions are included
     await this.loadJunctions();
 
     const googleKey = process.env.GOOGLE_MAPS_API_KEY;
@@ -158,8 +144,7 @@ export class SimulatorService {
     }
 
     this.gateway.broadcastTrafficUpdate(updates);
-    const sources = updates.map(u => u.source);
-    const googleCount = sources.filter(s => s === 'google').length;
+    const googleCount = updates.filter(u => u.source === 'google').length;
     this.log.log(
       `Updated ${updates.length} junctions | Google: ${googleCount} | Simulator: ${updates.length - googleCount}`,
     );
