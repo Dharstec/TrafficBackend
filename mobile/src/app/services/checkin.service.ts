@@ -53,4 +53,12 @@ export class CheckinService {
   createTestJunctionHere(lat: number, lng: number) {
     return this.http.post<any>(`${API}/junctions/set-test`, { lat, lng }, { headers: this.headers() });
   }
+
+  getTodayDuty() {
+    return this.http.get<any[]>(`${API}/checkins/my/today`, { headers: this.headers() });
+  }
+
+  clearTraffic(junctionId: number) {
+    return this.http.post<any>(`${API}/traffic/clear`, { junction_id: junctionId }, { headers: this.headers() });
+  }
 }

@@ -45,6 +45,18 @@ export class TrafficGateway implements OnGatewayConnection, OnGatewayDisconnect 
     this.server.emit('checkin:update', data);
   }
 
+  // Called when junction hits heavy traffic — alert supervisors/admins
+  broadcastHeavyAlert(data: any) {
+    this.server.to('role:admin').emit('traffic:heavy', data);
+    this.server.to('role:supervisor').emit('traffic:heavy', data);
+    this.server.emit('traffic:heavy', data); // also send to all for mobile
+  }
+
+  // Called when officer clears traffic
+  broadcastTrafficCleared(data: any) {
+    this.server.emit('traffic:cleared', data);
+  }
+
   // Called on new incident
   broadcastIncident(data: any) {
     this.server.to('role:admin').emit('incident:new', data);

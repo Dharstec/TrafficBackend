@@ -35,6 +35,12 @@ export class CheckinsController {
   @Get('active')
   getActive() { return this.service.getActiveCheckins(); }
 
+  @Get('my/today')
+  getMyToday(@Request() req) { return this.service.getTodayDuty(req.user.id); }
+
+  @Get('today/all')
+  getAllToday() { return this.service.getAllTodayDuty(); }
+
   @Get('my')
   getMy(@Request() req) { return this.service.getMyCheckins(req.user.id); }
 

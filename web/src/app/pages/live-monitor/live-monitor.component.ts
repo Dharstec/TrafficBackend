@@ -13,7 +13,9 @@ import * as L from 'leaflet';
 export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   trafficData: any[] = [];
   liveOfficers: any[] = [];
-  activeTab: 'traffic' | 'officers' = 'traffic';
+  todayDuty: any[] = [];
+  heavyAlerts: any[] = [];
+  activeTab: 'traffic' | 'officers' | 'duty' = 'traffic';
   filterDistrict = '';
   filterStation = '';
   filterMinDelay = 0;
@@ -37,16 +39,17 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
       this.socket.trafficUpdates$.subscribe(updates => {
         updates.forEach(u => {
           const idx = this.trafficData.findIndex(d => d.junction_id === u.junction_id);
-          if (idx >= 0) {
-            this.trafficData[idx] = { ...this.trafficData[idx], ...u };
-          }
+          if (idx >= 0) this.trafficData[idx] = { ...this.trafficData[idx], ...u };
           this.updateMapCircle(u);
         });
         this.lastUpdate = new Date();
       }),
-      this.socket.officerLocations$.subscribe(loc => {
-        this.updateOfficerMarker(loc);
+      this.socket.officerLocations$.subscribe(loc => this.updateOfficerMarker(loc)),
+      this.socket.heavyAlerts$.subscribe(alert => {
+        this.heavyAlerts.unshift({ ...alert, time: new Date(), acknowledged: false });
+        if (this.heavyAlerts.length > 20) this.heavyAlerts.pop();
       }),
+      this.socket.trafficCleared$.subscribe(() => this.load()),
     );
   }
 
@@ -55,6 +58,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   load() {
+    this.loadTodayDuty();
     this.trafficSvc.getLatest().subscribe(data => {
       this.trafficData = data;
       if (this.map) this.renderJunctionCircles(data);
@@ -63,6 +67,23 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
       this.liveOfficers = data;
       if (this.map) this.renderOfficerMarkers(data);
     });
+  }
+
+  loadTodayDuty() {
+    this.officerSvc.getAllTodayDuty().subscribe(d => this.todayDuty = d);
+  }
+
+  acknowledgeAlert(i: number) { this.heavyAlerts[i].acknowledged = true; }
+
+  formatDuration(min: number): string {
+    if (!min || min < 1) return '< 1m';
+    const h = Math.floor(min / 60); const m = Math.round(min % 60);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  }
+
+  getCongestionColor(level: string): string {
+    const m: any = { usual: '#4caf50', normal: '#ff9800', intermediate: '#f44336', heavy: '#7b1fa2' };
+    return m[level] || '#9e9e9e';
   }
 
   initMap() {

@@ -18,7 +18,7 @@ export class SimulatorService {
 
   private async loadJunctions() {
     try {
-      const res = await this.db.query('SELECT id, lat, lng FROM junctions WHERE is_active=true ORDER BY id');
+      const res = await this.db.query('SELECT id, name, short_name, lat, lng FROM junctions WHERE is_active=true ORDER BY id');
       this.junctions = res.rows;
     } catch (e) {
       setTimeout(() => this.loadJunctions(), 5000);
@@ -113,7 +113,13 @@ export class SimulatorService {
         [j.id, delay, level, speedKmh, source],
       );
 
-      updates.push({ junction_id: j.id, delay_minutes: delay, congestion_level: level, speed_kmh: speedKmh, time: new Date() });
+      const update = { junction_id: j.id, junction_name: j.name, short_name: j.short_name, delay_minutes: delay, congestion_level: level, speed_kmh: speedKmh, time: new Date() };
+      updates.push(update);
+
+      // Alert supervisors when traffic is heavy
+      if (level === 'heavy') {
+        this.gateway.broadcastHeavyAlert(update);
+      }
     }
 
     this.gateway.broadcastTrafficUpdate(updates);

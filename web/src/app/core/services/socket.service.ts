@@ -11,6 +11,8 @@ export class SocketService {
   officerLocations$ = new Subject<any>();
   checkinUpdates$ = new Subject<any>();
   incidents$ = new Subject<any>();
+  heavyAlerts$ = new Subject<any>();
+  trafficCleared$ = new Subject<any>();
 
   connect(user: any) {
     if (this.socket?.connected) return;
@@ -25,6 +27,8 @@ export class SocketService {
     this.socket.on('officer:location', (data) => this.officerLocations$.next(data));
     this.socket.on('checkin:update', (data) => this.checkinUpdates$.next(data));
     this.socket.on('incident:new', (data) => this.incidents$.next(data));
+    this.socket.on('traffic:heavy', (data) => this.heavyAlerts$.next(data));
+    this.socket.on('traffic:cleared', (data) => this.trafficCleared$.next(data));
   }
 
   disconnect() { this.socket?.disconnect(); }

@@ -1,6 +1,18 @@
 <div class="topbar">
   <h5 class="mb-0 fw-bold"><i class="bi bi-broadcast me-2 text-danger"></i>Traffic Live Monitor</h5>
-  <span class="text-muted small">Last update: {{ lastUpdate | date:'HH:mm:ss' }} &nbsp;|&nbsp; Auto refresh every 5 min</span>
+  <span class="text-muted small">Last update: {{ lastUpdate | date:'HH:mm:ss' }}</span>
+</div>
+
+<!-- Heavy Traffic Alerts -->
+<div *ngFor="let alert of heavyAlerts; let i=index" class="alert alert-danger d-flex align-items-center justify-content-between py-2 mb-2" [class.opacity-50]="alert.acknowledged">
+  <div>
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <strong>HEAVY TRAFFIC</strong> at <strong>{{ alert.junction_name || alert.short_name }}</strong>
+    — {{ alert.delay_minutes }} min delay &nbsp;·&nbsp;
+    <span class="text-muted small">{{ alert.time | date:'HH:mm:ss' }}</span>
+  </div>
+  <button class="btn btn-sm btn-outline-danger" (click)="acknowledgeAlert(i)" *ngIf="!alert.acknowledged">Acknowledge</button>
+  <span class="badge bg-secondary" *ngIf="alert.acknowledged">Acknowledged</span>
 </div>
 
 <!-- Filters -->
@@ -33,12 +45,17 @@
 <ul class="nav nav-tabs mb-3">
   <li class="nav-item">
     <a class="nav-link" [class.active]="activeTab==='traffic'" (click)="activeTab='traffic'" style="cursor:pointer">
-      <i class="bi bi-car-front me-1"></i>Traffic Congestions ({{ filteredTraffic.length }})
+      <i class="bi bi-car-front me-1"></i>Traffic ({{ filteredTraffic.length }})
     </a>
   </li>
   <li class="nav-item">
     <a class="nav-link" [class.active]="activeTab==='officers'" (click)="activeTab='officers'" style="cursor:pointer">
-      <i class="bi bi-person-badge me-1"></i>Field Officers ({{ liveOfficers.length }})
+      <i class="bi bi-person-badge me-1"></i>Live Officers ({{ liveOfficers.length }})
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" [class.active]="activeTab==='duty'" (click)="activeTab='duty';loadTodayDuty()" style="cursor:pointer">
+      <i class="bi bi-clock-history me-1"></i>Today's Duty ({{ todayDuty.length }})
     </a>
   </li>
 </ul>
@@ -85,17 +102,53 @@
       <div class="table-responsive" style="max-height:460px;overflow-y:auto">
         <table class="table table-hover table-sm align-middle mb-0">
           <thead class="table-light sticky-top">
-            <tr><th>Officer</th><th>Badge</th><th>Junction</th><th>Last Seen</th></tr>
+            <tr><th>Officer</th><th>Badge</th><th>Junction</th><th>Status</th><th>Last Seen</th></tr>
           </thead>
           <tbody>
             <tr *ngFor="let o of liveOfficers">
               <td class="fw-semibold small">{{ o.name }}</td>
               <td class="text-muted small">{{ o.badge_number }}</td>
               <td class="small">{{ o.junction_name || '—' }}</td>
+              <td>
+                <span class="badge" [class.bg-success]="o.junction_name" [class.bg-secondary]="!o.junction_name">
+                  {{ o.junction_name ? 'AT JUNCTION' : 'MOVING' }}
+                </span>
+              </td>
               <td class="text-muted" style="font-size:0.75rem">{{ o.time | date:'HH:mm' }}</td>
             </tr>
             <tr *ngIf="!liveOfficers.length">
-              <td colspan="4" class="text-center text-muted py-3">No officers online</td>
+              <td colspan="5" class="text-center text-muted py-3">No officers online</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Today's Duty Tab -->
+    <div class="table-card" *ngIf="activeTab==='duty'">
+      <div class="table-responsive" style="max-height:460px;overflow-y:auto">
+        <table class="table table-hover table-sm align-middle mb-0">
+          <thead class="table-light sticky-top">
+            <tr><th>Officer</th><th>Junction</th><th>Check-in</th><th>Check-out</th><th>Duration</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let d of todayDuty">
+              <td>
+                <div class="fw-semibold small">{{ d.officer_name }}</div>
+                <div class="text-muted" style="font-size:0.7rem">{{ d.badge_number }}</div>
+              </td>
+              <td class="small">{{ d.short_name }}</td>
+              <td class="small">{{ d.check_in_time | date:'HH:mm' }}</td>
+              <td class="small text-muted">{{ d.check_out_time ? (d.check_out_time | date:'HH:mm') : '—' }}</td>
+              <td class="fw-bold small" [class.text-success]="d.is_active">{{ formatDuration(d.duration_minutes) }}</td>
+              <td>
+                <span class="badge" [class.bg-success]="d.is_active" [class.bg-secondary]="!d.is_active">
+                  {{ d.is_active ? 'ACTIVE' : 'DONE' }}
+                </span>
+              </td>
+            </tr>
+            <tr *ngIf="!todayDuty.length">
+              <td colspan="6" class="text-center text-muted py-3">No duty records today</td>
             </tr>
           </tbody>
         </table>

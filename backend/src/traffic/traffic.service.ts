@@ -1,10 +1,14 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { Pool } from 'pg';
 import { DB_POOL } from '../database/database.module';
+import { TrafficGateway } from '../gateway/traffic.gateway';
 
 @Injectable()
 export class TrafficService {
-  constructor(@Inject(DB_POOL) private db: Pool) {}
+  constructor(
+    @Inject(DB_POOL) private db: Pool,
+    private gateway: TrafficGateway,
+  ) {}
 
   async getLatest() {
     const res = await this.db.query(`
@@ -90,6 +94,25 @@ export class TrafficService {
        VALUES (NOW(), $1, $2, $3, $4, $5, $6)`,
       [data.junction_id, data.delay_minutes, level, data.coming_from, data.going_to, data.speed_kmh],
     );
+  }
+
+  // Officer reports traffic is clear at their junction
+  async clearTraffic(officerId: number, junctionId: number) {
+    const j = await this.db.query('SELECT name, short_name FROM junctions WHERE id=$1', [junctionId]);
+    await this.db.query(
+      `INSERT INTO traffic_data (junction_id, delay_minutes, congestion_level, speed_kmh, source)
+       VALUES ($1, 1, 'usual', 55, 'officer_clear')`,
+      [junctionId],
+    );
+    const update = { junction_id: junctionId, delay_minutes: 1, congestion_level: 'usual', speed_kmh: 55, time: new Date() };
+    this.gateway.broadcastTrafficUpdate([update]);
+    this.gateway.broadcastTrafficCleared({ ...update, junction_name: j.rows[0]?.name, cleared_by: officerId });
+    return { cleared: true, junction_id: junctionId };
+  }
+
+  // Supervisor acknowledges alert for a junction
+  async acknowledgeAlert(junctionId: number, supervisorId: number) {
+    return { acknowledged: true, junction_id: junctionId, by: supervisorId };
   }
 
   getLevel(delay: number): string {

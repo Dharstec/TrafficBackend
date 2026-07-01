@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param, UseGuards, Request } from '@nestjs/common';
 import { TrafficService } from './traffic.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -32,5 +32,10 @@ export class TrafficController {
   @Get('report/weekly')
   getWeeklyReport(@Query('junction_id') junctionId?: string) {
     return this.service.getWeeklyReport(junctionId ? +junctionId : undefined);
+  }
+
+  @Post('clear')
+  clearTraffic(@Request() req, @Body() body: { junction_id: number }) {
+    return this.service.clearTraffic(req.user.id, body.junction_id);
   }
 }

@@ -15,13 +15,13 @@ export class HomePage implements OnInit, OnDestroy {
   activeCheckin: any = null;
   junctions: any[] = [];
   trafficData: any[] = [];
+  todayDuty: any[] = [];
 
   deviceStatus = { breath_analyzer: false, body_camera: false, signal_remote: false, challan_machine: false };
   showDeviceCheck = false;
-  showManualCheckin = false;
-  selectedJunctionId = '';
+  clearingTraffic = false;
 
-  // GPS test panel state
+  // GPS test panel
   showTestPanel = false;
   myLat: number | null = null;
   myLng: number | null = null;
@@ -33,8 +33,6 @@ export class HomePage implements OnInit, OnDestroy {
   dropLoading = false;
   checkinLoading = false;
   checkoutLoading = false;
-
-  // Step tracker: 1=get GPS, 2=drop junction, 3=test checkin, 4=test checkout
   testStep = 1;
 
   private subs: Subscription[] = [];
@@ -54,7 +52,7 @@ export class HomePage implements OnInit, OnDestroy {
     this.geo.startTracking(15000);
     this.subs.push(
       this.geo.nearbyJunction$.subscribe(junction => {
-        if (junction) { this.showAutoCheckinAlert(junction); }
+        if (junction) this.showAutoCheckinAlert(junction);
         else { this.activeCheckin = null; this.toast('Auto checkout — moved beyond 200m', 'warning'); }
         this.load();
       })
@@ -65,9 +63,40 @@ export class HomePage implements OnInit, OnDestroy {
     this.checkinSvc.getActiveCheckin().subscribe(d => this.activeCheckin = d);
     this.checkinSvc.getJunctions().subscribe(d => this.junctions = d);
     this.checkinSvc.getTrafficLatest().subscribe(d => this.trafficData = d);
+    this.checkinSvc.getTodayDuty().subscribe(d => this.todayDuty = d);
   }
 
-  // ── STEP 1: Get real GPS ──────────────────────────────────────
+  // Today's total time at junctions
+  get totalDutyMinutes(): number {
+    return this.todayDuty.reduce((sum, d) => sum + (+d.duration_minutes || 0), 0);
+  }
+
+  formatDuration(minutes: number): string {
+    if (!minutes || minutes < 1) return '< 1 min';
+    const h = Math.floor(minutes / 60);
+    const m = Math.round(minutes % 60);
+    return h > 0 ? `${h}h ${m}m` : `${m} min`;
+  }
+
+  // Officer marks junction traffic as clear
+  async clearTraffic() {
+    if (!this.activeCheckin) return;
+    this.clearingTraffic = true;
+    this.checkinSvc.clearTraffic(this.activeCheckin.junction_id).subscribe({
+      next: async () => {
+        this.clearingTraffic = false;
+        await this.toast('Traffic cleared! Supervisor notified.', 'success');
+        this.load();
+      },
+      error: async () => {
+        this.clearingTraffic = false;
+        await this.toast('Failed to update traffic', 'danger');
+      }
+    });
+  }
+
+  // ── GPS Test Panel ────────────────────────────────────────────
+
   async getMyGPS() {
     this.gpsLoading = true;
     this.testResult = '';
@@ -86,7 +115,6 @@ export class HomePage implements OnInit, OnDestroy {
     this.gpsLoading = false;
   }
 
-  // ── STEP 2: Drop junction exactly at current location ─────────
   async dropJunctionHere() {
     if (!this.myLat || !this.myLng) return;
     this.dropLoading = true;
@@ -95,7 +123,7 @@ export class HomePage implements OnInit, OnDestroy {
       const res: any = await this.checkinSvc.createTestJunctionHere(this.myLat, this.myLng).toPromise();
       this.testJunction = res.junction;
       this.testStep = 3;
-      this.testResult = `Junction created at YOUR location (${this.myLat.toFixed(5)}, ${this.myLng.toFixed(5)}). You are 0m away — inside 200m zone.`;
+      this.testResult = `Junction created at YOUR location. You are 0m away — inside 200m zone.`;
       this.testResultOk = true;
       this.load();
     } catch (e) {
@@ -105,7 +133,6 @@ export class HomePage implements OnInit, OnDestroy {
     this.dropLoading = false;
   }
 
-  // ── STEP 3: Test auto check-in (you are AT the junction) ─────
   async testCheckin() {
     if (!this.myLat || !this.myLng) return;
     this.checkinLoading = true;
@@ -114,13 +141,13 @@ export class HomePage implements OnInit, OnDestroy {
       const res: any = await this.checkinSvc.autoCheckinTest(this.myLat, this.myLng).toPromise();
       if (res?.checked_in) {
         this.testStep = 4;
-        this.testResult = `CHECK-IN SUCCESS! Junction: "${res.junction?.name}". Distance: ~0m (inside 200m zone).`;
+        this.testResult = `CHECK-IN SUCCESS! Junction: "${res.junction?.name}". Distance: ~0m.`;
         this.testResultOk = true;
         this.showDeviceCheck = true;
         this.load();
         await this.toast('Checked in at your location!', 'success');
       } else {
-        this.testResult = `Not checked in: ${res?.message}. Re-do Step 1 to refresh GPS.`;
+        this.testResult = `Not checked in: ${res?.message}`;
         this.testResultOk = false;
       }
     } catch (e: any) {
@@ -130,25 +157,20 @@ export class HomePage implements OnInit, OnDestroy {
     this.checkinLoading = false;
   }
 
-  // ── STEP 4: Simulate moving 250m away → should auto-checkout ──
   async testCheckoutSimulate() {
     if (!this.myLat || !this.myLng) return;
     this.checkoutLoading = true;
     this.testResult = '';
-
-    // Move 250m north (~0.00225 degrees latitude)
     const farLat = this.myLat + 0.00225;
-    const farLng = this.myLng;
-
     try {
-      const res: any = await this.checkinSvc.autoCheckoutTest(farLat, farLng).toPromise();
+      const res: any = await this.checkinSvc.autoCheckoutTest(farLat, this.myLng).toPromise();
       if (res?.checked_out) {
         this.testStep = 1;
         this.testJunction = null;
-        this.testResult = `CHECKOUT SUCCESS! Simulated moving ${res.distance}m away — outside 200m zone. Test complete!`;
+        this.testResult = `CHECKOUT SUCCESS! Simulated ${res.distance}m away. Test complete!`;
         this.testResultOk = true;
         this.load();
-        await this.toast(`Checkout! ${res.distance}m away from junction`, 'success');
+        await this.toast(`Checkout! ${res.distance}m away`, 'success');
       } else {
         this.testResult = `Not checked out: ${res?.message}`;
         this.testResultOk = false;
@@ -181,17 +203,6 @@ export class HomePage implements OnInit, OnDestroy {
     });
   }
 
-  async doManualCheckin() {
-    if (!this.selectedJunctionId) return;
-    const pos = await this.geo.getCurrentPosition();
-    this.checkinSvc.manualCheckin(+this.selectedJunctionId, pos.lat, pos.lng).subscribe(async () => {
-      this.showManualCheckin = false;
-      this.showDeviceCheck = true;
-      await this.toast('Checked in', 'success');
-      this.load();
-    });
-  }
-
   async doCheckout() {
     const alert = await this.alertCtrl.create({
       header: 'Confirm Checkout',
@@ -216,6 +227,10 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   getTrafficForJunction(id: number) { return this.trafficData.find(d => d.junction_id === id); }
+  getCurrentTraffic() {
+    if (!this.activeCheckin) return null;
+    return this.getTrafficForJunction(this.activeCheckin.junction_id);
+  }
 
   logout() { this.auth.logout(); this.router.navigate(['/login']); }
   goToIncident() { this.router.navigate(['/incident']); }
