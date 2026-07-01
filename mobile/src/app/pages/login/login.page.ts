@@ -27,11 +27,14 @@ export class LoginPage {
         await loading.dismiss();
         this.router.navigate(['/home'], { replaceUrl: true });
       },
-      error: async () => {
+      error: async (err) => {
         await loading.dismiss();
+        const msg = err?.status === 0
+          ? `Cannot reach server (${err.status}). Check network.`
+          : err?.error?.message || err?.message || `Error ${err?.status}`;
         const toast = await this.toastCtrl.create({
-          message: 'Invalid email or password',
-          duration: 2500,
+          message: msg,
+          duration: 4000,
           color: 'danger',
           position: 'top',
         });

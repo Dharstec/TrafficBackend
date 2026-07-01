@@ -4,7 +4,7 @@ const config: CapacitorConfig = {
   appId: 'in.gov.gctp.traffic',
   appName: 'GCTP Traffic',
   webDir: 'www/browser',
-  server: { androidScheme: 'https' },
+  server: { androidScheme: 'http' },
   plugins: {
     Geolocation: { permissions: ['location'] },
   },
