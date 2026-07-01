@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, BadRequestException, ConflictException } from '@nestjs/common';
 import { Pool } from 'pg';
 import { DB_POOL } from '../database/database.module';
 import * as bcrypt from 'bcryptjs';
@@ -36,13 +36,32 @@ export class OfficersService {
   }
 
   async create(data: any) {
+    if (!data.name || !data.badge_number || !data.email || !data.password) {
+      throw new BadRequestException('name, badge_number, email and password are required');
+    }
+
+    // Validate assigned_junction_id exists if provided
+    const junctionId = data.assigned_junction_id ? +data.assigned_junction_id : null;
+    if (junctionId) {
+      const jCheck = await this.db.query('SELECT id FROM junctions WHERE id=$1 AND is_active=true', [junctionId]);
+      if (!jCheck.rows.length) throw new BadRequestException(`Junction with id ${junctionId} does not exist`);
+    }
+
     const hash = await bcrypt.hash(data.password, 10);
-    const res = await this.db.query(
-      `INSERT INTO officers (name, badge_number, phone, email, password_hash, role, assigned_junction_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, name, badge_number, email, role`,
-      [data.name, data.badge_number, data.phone, data.email, hash, data.role, data.assigned_junction_id || null],
-    );
-    return res.rows[0];
+    try {
+      const res = await this.db.query(
+        `INSERT INTO officers (name, badge_number, phone, email, password_hash, role, assigned_junction_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, name, badge_number, email, role`,
+        [data.name, data.badge_number, data.phone, data.email, hash, data.role || 'field_officer', junctionId],
+      );
+      return res.rows[0];
+    } catch (e: any) {
+      if (e.code === '23505') {
+        const field = e.detail?.includes('badge_number') ? 'badge_number' : 'email';
+        throw new ConflictException(`An officer with this ${field} already exists`);
+      }
+      throw e;
+    }
   }
 
   async update(id: number, data: any) {
