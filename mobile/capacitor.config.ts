@@ -6,7 +6,9 @@ const config: CapacitorConfig = {
   webDir: 'www/browser',
   server: { androidScheme: 'http' },
   plugins: {
-    Geolocation: { permissions: ['location'] },
+    Geolocation: {
+      permissions: ['location', 'coarseLocation'],
+    },
   },
 };
 

@@ -51,6 +51,7 @@ export class GeolocationService {
       this.watchId = await Geolocation.watchPosition(
         { enableHighAccuracy: true, timeout: 15000 },
         (position, err) => {
+          console.log(position,"position")
           if (err || !position) {
             console.error('[GPS] watchPosition error:', err);
             return;

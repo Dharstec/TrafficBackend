@@ -9,7 +9,8 @@ git pull origin Gokul
 
 echo "=== Installing dependencies ==="
 cd backend
-npm install
+rm -rf node_modules
+npm install --include=dev
 
 echo "=== Building ==="
 node node_modules/typescript/bin/tsc --project tsconfig.json
