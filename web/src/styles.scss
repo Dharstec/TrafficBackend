@@ -130,3 +130,24 @@ body { background: #f0f2f5; font-family: 'Segoe UI', sans-serif; margin: 0; }
   white-space: nowrap !important;
 }
 .junction-web-label::before { display: none !important; }
+
+/* Live Monitor map pins (Leaflet divIcon — created outside Angular's render
+   tree, so these rules must stay global, not component-scoped). */
+.lm-pin-icon {
+  background: transparent !important;
+  border: none !important;
+  filter: drop-shadow(0 2px 3px rgba(32, 33, 36, 0.35));
+  transition: filter 0.2s;
+}
+
+.lm-pin-icon.lm-pin-selected {
+  z-index: 1000 !important;
+  filter: drop-shadow(0 4px 6px rgba(32, 33, 36, 0.45));
+  animation: lm-pin-pop 0.4s ease;
+}
+
+@keyframes lm-pin-pop {
+  0% { transform: translateY(-10px) scale(0.9); }
+  60% { transform: translateY(2px) scale(1.05); }
+  100% { transform: translateY(0) scale(1); }
+}

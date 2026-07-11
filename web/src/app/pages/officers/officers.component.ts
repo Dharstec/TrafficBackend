@@ -1,8 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { OfficerService } from '../../core/services/officer.service';
 import { JunctionService } from '../../core/services/junction.service';
-import { HttpClient } from '@angular/common/http';
-import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-officers',
@@ -26,7 +24,6 @@ export class OfficersComponent implements OnInit {
   constructor(
     private svc: OfficerService,
     private junctionSvc: JunctionService,
-    private http: HttpClient,
   ) {}
 
   ngOnInit() { this.load(); }
@@ -74,7 +71,7 @@ export class OfficersComponent implements OnInit {
 
     let obs;
     if (this.editId) {
-      obs = this.http.put(`${environment.apiUrl}/officers/${this.editId}`, payload);
+      obs = this.svc.update(this.editId, payload);
     } else {
       obs = this.svc.create({
         ...payload,
@@ -91,6 +88,6 @@ export class OfficersComponent implements OnInit {
   }
 
   resolveIncident(id: number) {
-    this.http.put(`${environment.apiUrl}/incidents/${id}/resolve`, {}).subscribe(() => this.load());
+    this.svc.resolveIncident(id).subscribe(() => this.load());
   }
 }

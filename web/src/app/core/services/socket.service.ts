@@ -15,6 +15,7 @@ export class SocketService {
   trafficCleared$ = new Subject<any>();
 
   connect(user: any) {
+    if (environment.useMockData) return; // UI-only mode: no live backend to connect to
     if (this.socket?.connected) return;
 
     this.socket = io(environment.wsUrl, { transports: ['websocket'] });

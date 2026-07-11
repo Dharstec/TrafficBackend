@@ -1,26 +1,41 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { of } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { MOCK_TRAFFIC_LATEST } from '../../mock/mock-data';
 
 @Injectable({ providedIn: 'root' })
 export class TrafficService {
   constructor(private http: HttpClient) {}
 
-  getLatest() { return this.http.get<any[]>(`${environment.apiUrl}/traffic/latest`); }
+  getLatest() {
+    if (environment.useMockData) return of(MOCK_TRAFFIC_LATEST);
+    return this.http.get<any[]>(`${environment.apiUrl}/traffic/latest`);
+  }
 
   getByJunction(id: number, hours = 24) {
+    if (environment.useMockData) {
+      return of(MOCK_TRAFFIC_LATEST.filter(d => d.junction_id === id));
+    }
     return this.http.get<any[]>(`${environment.apiUrl}/traffic/junction/${id}?hours=${hours}`);
   }
 
   getHistory(junctionId: number, start: string, end: string) {
+    if (environment.useMockData) {
+      return of(MOCK_TRAFFIC_LATEST.filter(d => d.junction_id === junctionId));
+    }
     return this.http.get<any[]>(`${environment.apiUrl}/traffic/history?junction_id=${junctionId}&start=${start}&end=${end}`);
   }
 
   getSnapshot(date: string, time: string) {
+    if (environment.useMockData) return of(MOCK_TRAFFIC_LATEST);
     return this.http.get<any[]>(`${environment.apiUrl}/traffic/snapshot?date=${date}&time=${time}`);
   }
 
   getWeeklyReport(junctionId?: number) {
+    if (environment.useMockData) {
+      return of(junctionId ? MOCK_TRAFFIC_LATEST.filter(d => d.junction_id === junctionId) : MOCK_TRAFFIC_LATEST);
+    }
     const q = junctionId ? `?junction_id=${junctionId}` : '';
     return this.http.get<any[]>(`${environment.apiUrl}/traffic/report/weekly${q}`);
   }
