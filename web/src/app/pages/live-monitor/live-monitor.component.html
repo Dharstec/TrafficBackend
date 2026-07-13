@@ -1,63 +1,101 @@
+<ng-container *ngIf="false">
 <div class="topbar">
   <h5 class="mb-0 fw-bold"><i class="bi bi-broadcast me-2 text-danger"></i>Traffic Live Monitor</h5>
   <span class="text-muted small">Last update: {{ lastUpdate | date:'HH:mm:ss' }}</span>
 </div>
 
-<!-- Heavy Traffic Alerts -->
-<div *ngFor="let alert of heavyAlerts; let i=index" class="lm-alert" [class.lm-alert-ack]="alert.acknowledged">
-  <div class="lm-alert-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
-  <div class="lm-alert-main">
-    <div class="lm-alert-title">Heavy traffic at {{ alert.junction_name || alert.short_name }}</div>
-    <div class="lm-alert-sub">{{ alert.delay_minutes }} min delay · {{ alert.time | date:'HH:mm:ss' }}</div>
-  </div>
-  <button class="lm-alert-btn" (click)="acknowledgeAlert(i)" *ngIf="!alert.acknowledged">Acknowledge</button>
-  <span class="lm-alert-done" *ngIf="alert.acknowledged"><i class="bi bi-check2"></i>Acknowledged</span>
-</div>
+<!-- Heavy Traffic Alerts + Tabs: hidden for the map-focused layout (kept in
+     markup/component untouched, not redesigned — just not shown). -->
 
-<!-- Tabs: Map + Officers + Duty -->
-<div class="lm-tabbar">
-  <button class="lm-tab" [class.active]="activeTab==='map'" (click)="activeTab='map'">
-    <i class="bi bi-map"></i>Live Map
-  </button>
-  <button class="lm-tab" [class.active]="activeTab==='officers'" (click)="activeTab='officers'">
-    <i class="bi bi-person-badge"></i>Live Officers
-    <span class="lm-tab-count">{{ liveOfficers.length }}</span>
-  </button>
-  <button class="lm-tab" [class.active]="activeTab==='duty'" (click)="activeTab='duty';loadTodayDuty()">
-    <i class="bi bi-clock-history"></i>Today's Duty
-    <span class="lm-tab-count">{{ todayDuty.length }}</span>
-  </button>
-</div>
-
-<!-- Live Map Tab: map-first command center — rounded search pill over a
-     Leaflet map, results list floating on the right. -->
-<div *ngIf="activeTab==='map'" class="lm-map-shell">
-
-  <!-- Rounded search bar -->
-  <div class="lm-searchbar">
-    <i class="bi bi-search lm-searchbar-icon"></i>
-    <div class="lm-searchbar-fields">
-      <select class="lm-chip" [(ngModel)]="filterDistrict">
-        <option value="">District</option>
-        <option *ngFor="let d of districts" [value]="d">{{ d }}</option>
-      </select>
-      <span class="lm-chip-divider"></span>
-      <select class="lm-chip" [(ngModel)]="filterSubDivision">
-        <option value="">Sub Division</option>
-        <option *ngFor="let s of subDivisions" [value]="s">{{ s }}</option>
-      </select>
-      <span class="lm-chip-divider"></span>
-      <select class="lm-chip" [(ngModel)]="filterSection">
-        <option value="">Section</option>
-        <option *ngFor="let s of sections" [value]="s">{{ s }}</option>
-      </select>
-      <span class="lm-chip-divider"></span>
-      <input class="lm-chip lm-chip-num" type="number" min="0" [(ngModel)]="filterMinDelay" placeholder="Min delay" />
+  <div *ngFor="let alert of heavyAlerts; let i=index" class="lm-alert" [class.lm-alert-ack]="alert.acknowledged">
+    <div class="lm-alert-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
+    <div class="lm-alert-main">
+      <div class="lm-alert-title">Heavy traffic at {{ alert.junction_name || alert.short_name }}</div>
+      <div class="lm-alert-sub">{{ alert.delay_minutes }} min delay · {{ alert.time | date:'HH:mm:ss' }}</div>
     </div>
-    <button class="lm-searchbar-btn" (click)="searchTraffic()" title="Search">
-      <i class="bi bi-search"></i>
+    <button class="lm-alert-btn" (click)="acknowledgeAlert(i)" *ngIf="!alert.acknowledged">Acknowledge</button>
+    <span class="lm-alert-done" *ngIf="alert.acknowledged"><i class="bi bi-check2"></i>Acknowledged</span>
+  </div>
+
+  <div class="lm-tabbar">
+    <button class="lm-tab" [class.active]="activeTab==='map'" (click)="activeTab='map'">
+      <i class="bi bi-map"></i>Live Map
+    </button>
+    <button class="lm-tab" [class.active]="activeTab==='officers'" (click)="activeTab='officers'">
+      <i class="bi bi-person-badge"></i>Live Officers
+      <span class="lm-tab-count">{{ liveOfficers.length }}</span>
+    </button>
+    <button class="lm-tab" [class.active]="activeTab==='duty'" (click)="activeTab='duty';loadTodayDuty()">
+      <i class="bi bi-clock-history"></i>Today's Duty
+      <span class="lm-tab-count">{{ todayDuty.length }}</span>
     </button>
   </div>
+</ng-container>
+
+<!-- Live Map Tab: map-first command center — floating Google-Maps-style
+     filter chips over a near-fullscreen Leaflet map, results list floating
+     on the right. -->
+<div *ngIf="activeTab==='map'" class="lm-map-shell">
+
+  <!-- Floating filter chips -->
+  <div class="lm-chipbar">
+    <div class="lm-chipbar-scroll">
+
+      <div class="lm-fchip-group">
+        <button type="button" class="lm-fchip" [class.has-value]="filterDistrict" [class.open]="openChip==='district'" (click)="toggleChip('district', $event)">
+          <i class="bi bi-geo-alt"></i>
+          <span>{{ filterDistrict || 'District' }}</span>
+          <i class="bi bi-chevron-down lm-fchip-caret"></i>
+        </button>
+        <div class="lm-fchip-panel" *ngIf="openChip==='district'" [style.top.px]="chipPanelPos.top" [style.left.px]="chipPanelPos.left">
+          <button type="button" class="lm-fchip-opt" [class.selected]="!filterDistrict" (click)="selectDistrict('')">All Districts</button>
+          <button type="button" class="lm-fchip-opt" *ngFor="let d of districts" [class.selected]="filterDistrict===d" (click)="selectDistrict(d)">{{ d }}</button>
+        </div>
+      </div>
+
+      <div class="lm-fchip-group">
+        <button type="button" class="lm-fchip" [class.has-value]="filterSubDivision" [class.open]="openChip==='subDivision'" (click)="toggleChip('subDivision', $event)">
+          <i class="bi bi-diagram-3"></i>
+          <span>{{ filterSubDivision || 'Sub Division' }}</span>
+          <i class="bi bi-chevron-down lm-fchip-caret"></i>
+        </button>
+        <div class="lm-fchip-panel" *ngIf="openChip==='subDivision'" [style.top.px]="chipPanelPos.top" [style.left.px]="chipPanelPos.left">
+          <button type="button" class="lm-fchip-opt" [class.selected]="!filterSubDivision" (click)="selectSubDivision('')">All Sub Divisions</button>
+          <button type="button" class="lm-fchip-opt" *ngFor="let s of subDivisions" [class.selected]="filterSubDivision===s" (click)="selectSubDivision(s)">{{ s }}</button>
+        </div>
+      </div>
+
+      <div class="lm-fchip-group">
+        <button type="button" class="lm-fchip" [class.has-value]="filterSection" [class.open]="openChip==='section'" (click)="toggleChip('section', $event)">
+          <i class="bi bi-signpost-split"></i>
+          <span>{{ filterSection || 'Section' }}</span>
+          <i class="bi bi-chevron-down lm-fchip-caret"></i>
+        </button>
+        <div class="lm-fchip-panel" *ngIf="openChip==='section'" [style.top.px]="chipPanelPos.top" [style.left.px]="chipPanelPos.left">
+          <button type="button" class="lm-fchip-opt" [class.selected]="!filterSection" (click)="selectSection('')">All Sections</button>
+          <button type="button" class="lm-fchip-opt" *ngFor="let s of sections" [class.selected]="filterSection===s" (click)="selectSection(s)">{{ s }}</button>
+        </div>
+      </div>
+
+      <div class="lm-fchip-group">
+        <button type="button" class="lm-fchip" [class.has-value]="filterMinDelay != null" [class.open]="openChip==='minDelay'" (click)="toggleChip('minDelay', $event)">
+          <i class="bi bi-stopwatch"></i>
+          <span>{{ filterMinDelay != null ? (filterMinDelay + '+ min') : 'Min Delay' }}</span>
+          <i class="bi bi-chevron-down lm-fchip-caret"></i>
+        </button>
+        <div class="lm-fchip-panel" *ngIf="openChip==='minDelay'" [style.top.px]="chipPanelPos.top" [style.left.px]="chipPanelPos.left">
+          <button type="button" class="lm-fchip-opt" [class.selected]="filterMinDelay==null" (click)="selectMinDelay(null)">Any delay</button>
+          <button type="button" class="lm-fchip-opt" *ngFor="let m of minDelayOptions" [class.selected]="filterMinDelay===m" (click)="selectMinDelay(m)">{{ m }}+ min</button>
+        </div>
+      </div>
+
+      <button type="button" class="lm-fchip lm-fchip-clear" *ngIf="filterDistrict || filterSubDivision || filterSection || filterMinDelay != null" (click)="clearAllFilters()">
+        <i class="bi bi-x-circle"></i><span>Clear</span>
+      </button>
+
+    </div>
+  </div>
+  <div class="lm-chip-backdrop" *ngIf="openChip" (click)="openChip=null"></div>
 
   <!-- Map -->
   <div class="lm-map">
@@ -65,11 +103,20 @@
 
     <!-- Legend -->
     <div class="lm-legend" *ngIf="mapReady">
-      <div class="lm-legend-item"><span class="lm-legend-dot" style="background:#4caf50"></span>Usual</div>
-      <div class="lm-legend-item"><span class="lm-legend-dot" style="background:#ff9800"></span>Normal</div>
-      <div class="lm-legend-item"><span class="lm-legend-dot" style="background:#f44336"></span>Intermediate</div>
-      <div class="lm-legend-item"><span class="lm-legend-dot" style="background:#7b1fa2"></span>Heavy</div>
-      <div class="lm-legend-item"><span class="lm-legend-dot" style="background:#1976d2"></span>Officer</div>
+      <div class="lm-legend-row">
+        <div class="lm-legend-item"><span class="lm-legend-dot" style="background:#4caf50"></span>Usual</div>
+        <div class="lm-legend-item"><span class="lm-legend-dot" style="background:#ff9800"></span>Normal</div>
+        <div class="lm-legend-item"><span class="lm-legend-dot" style="background:#f44336"></span>Intermediate</div>
+        <div class="lm-legend-item"><span class="lm-legend-dot" style="background:#7b1fa2"></span>Heavy</div>
+        <div class="lm-legend-item"><span class="lm-legend-dot" style="background:#1976d2"></span>Officer</div>
+      </div>
+      <div class="lm-legend-divider"></div>
+      <div class="lm-legend-row">
+        <div class="lm-legend-item"><span class="lm-legend-pin lm-legend-pin-sm" style="background:#4caf50"></span>1–2m delay</div>
+        <div class="lm-legend-item"><span class="lm-legend-pin lm-legend-pin-md" style="background:#ff9800"></span>3–5m delay</div>
+        <div class="lm-legend-item"><span class="lm-legend-pin lm-legend-pin-lg" style="background:#f44336"></span>6–9m delay</div>
+        <div class="lm-legend-item"><span class="lm-legend-pin lm-legend-pin-xl" style="background:#7b1fa2"></span>10m+ delay</div>
+      </div>
     </div>
   </div>
 

@@ -31,21 +31,25 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   searchUsual = '';
   filterUsual = '';
 
-  // ── Map-first top filter bar (District / Sub Division / Section / Min Delay) ──
+  // ── Floating filter chips (District / Sub Division / Section / Min Delay) ──
   junctionsById: Record<number, any> = {};
   districts: string[] = [];
   subDivisions: string[] = [];
   sections: string[] = [];
+  minDelayOptions = [1, 3, 6, 10];
 
   filterDistrict = '';
   filterSubDivision = '';
   filterSection = '';
   filterMinDelay: number | null = null;
 
-  private appliedDistrict = '';
-  private appliedSubDivision = '';
-  private appliedSection = '';
-  private appliedMinDelay: number | null = null;
+  // Which chip's dropdown panel is currently open (null = all closed).
+  // The panel is position:fixed and anchored to the clicked chip's
+  // bounding rect — the chip row scrolls horizontally, and CSS overflow-x:
+  // auto on an ancestor forces overflow-y to clip too, so an absolutely
+  // positioned dropdown inside that row gets cut off.
+  openChip: 'district' | 'subDivision' | 'section' | 'minDelay' | null = null;
+  chipPanelPos = { top: 0, left: 0 };
 
   // ── Leaflet map ─────────────────────────────────────────────────────
   @ViewChild('leafletEl') leafletEl?: ElementRef<HTMLDivElement>;
@@ -159,17 +163,9 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // Merged "Traffic Delay Monitor" — same rows/sort as freeFlowTraffic, plus the
-  // District / Sub Division / Section / Min Delay filters from the map top bar.
+  // District / Sub Division / Section / Min Delay filter chips floating over the map.
   get mergedTraffic() {
-    return this.freeFlowTraffic.filter(d => {
-      const j = this.junctionsById[d.junction_id];
-      if (this.appliedDistrict && j?.district !== this.appliedDistrict) return false;
-      if (this.appliedSubDivision && j?.sub_division !== this.appliedSubDivision) return false;
-      if (this.appliedSection && j?.station !== this.appliedSection && d.station !== this.appliedSection) return false;
-      const maxDelay = Math.max(+d.delay_minutes || 0, +d.usual_delay_minutes || 0);
-      if (this.appliedMinDelay != null && maxDelay < this.appliedMinDelay) return false;
-      return true;
-    });
+    return this.freeFlowTraffic.filter(d => this.passesChipFilters(d));
   }
 
   loadJunctionMeta() {
@@ -182,11 +178,57 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  searchTraffic() {
-    this.appliedDistrict = this.filterDistrict;
-    this.appliedSubDivision = this.filterSubDivision;
-    this.appliedSection = this.filterSection;
-    this.appliedMinDelay = this.filterMinDelay;
+  toggleChip(name: 'district' | 'subDivision' | 'section' | 'minDelay', event: MouseEvent) {
+    if (this.openChip === name) {
+      this.openChip = null;
+      return;
+    }
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    this.chipPanelPos = { top: rect.bottom + 6, left: rect.left };
+    this.openChip = name;
+  }
+
+  selectDistrict(v: string) { this.filterDistrict = v; this.openChip = null; this.applyChipFilters(); }
+  selectSubDivision(v: string) { this.filterSubDivision = v; this.openChip = null; this.applyChipFilters(); }
+  selectSection(v: string) { this.filterSection = v; this.openChip = null; this.applyChipFilters(); }
+  selectMinDelay(v: number | null) { this.filterMinDelay = v; this.openChip = null; this.applyChipFilters(); }
+
+  clearAllFilters() {
+    this.filterDistrict = '';
+    this.filterSubDivision = '';
+    this.filterSection = '';
+    this.filterMinDelay = null;
+    this.openChip = null;
+    this.applyChipFilters();
+  }
+
+  private passesChipFilters(d: any): boolean {
+    const j = this.junctionsById[d.junction_id];
+    if (this.filterDistrict && j?.district !== this.filterDistrict) return false;
+    if (this.filterSubDivision && j?.sub_division !== this.filterSubDivision) return false;
+    if (this.filterSection && j?.station !== this.filterSection && d.station !== this.filterSection) return false;
+    const maxDelay = Math.max(+d.delay_minutes || 0, +d.usual_delay_minutes || 0);
+    if (this.filterMinDelay != null && maxDelay < this.filterMinDelay) return false;
+    return true;
+  }
+
+  private get pinSourceData() {
+    return this.hasRoutes
+      ? this.routeTrafficData.map((r: any) => ({ ...r, lat: r.junction_lat, lng: r.junction_lng }))
+      : this.trafficData;
+  }
+
+  // Instantly reflects the filter chips on the map by toggling marker
+  // visibility, without re-fitting bounds or losing the current view.
+  private applyChipFilters() {
+    if (!this.map) return;
+    const visibleIds = new Set(this.pinSourceData.filter(d => this.passesChipFilters(d)).map(d => d.junction_id));
+    this.junctionMarkers.forEach((marker, id) => {
+      const shouldShow = visibleIds.has(id);
+      const onMap = this.map!.hasLayer(marker);
+      if (shouldShow && !onMap) marker.addTo(this.map!);
+      if (!shouldShow && onMap) this.map!.removeLayer(marker);
+    });
   }
 
   officerForRow(d: any): string {
@@ -235,6 +277,16 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.junctionNumberById.get(id)!;
   }
 
+  // Pin size tier by delay severity: 1-2m small, 3-5m medium, 6-9m large,
+  // 10m+ extra large — the higher the delay, the more noticeable the pin.
+  private pinSizeForDelay(delayMinutes: number): { w: number; h: number } {
+    const d = +delayMinutes || 0;
+    if (d >= 10) return { w: 40, h: 55 }; // Extra large
+    if (d >= 6) return { w: 33, h: 45 };  // Large
+    if (d >= 3) return { w: 27, h: 37 };  // Medium
+    return { w: 22, h: 30 };              // Small (0-2m)
+  }
+
   // Teardrop pin icon — color and size both driven by the row's JSON fields
   // (congestion_level for color, delay_minutes for size), numbered so pins
   // can be matched back to their row in the Traffic Delay Monitor panel.
@@ -243,10 +295,10 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     const color = this.getCongestionColor(d.congestion_level);
     const isSelected = this.selectedJunctionId === d.junction_id;
     const label = String(this.getJunctionNumber(d.junction_id)).padStart(2, '0');
-    const baseScale = Math.min(1.3, Math.max(0.85, 0.85 + (+d.delay_minutes || 0) / 40));
-    const scale = isSelected ? baseScale * 1.15 : baseScale;
-    const w = Math.round(26 * scale);
-    const h = Math.round(36 * scale);
+    const { w: baseW, h: baseH } = this.pinSizeForDelay(d.delay_minutes);
+    const selMult = isSelected ? 1.15 : 1;
+    const w = Math.round(baseW * selMult);
+    const h = Math.round(baseH * selMult);
     const glow = isSelected
       ? `<circle cx="13" cy="13" r="12" fill="${color}" opacity="0.35">
            <animate attributeName="r" values="10;19;10" dur="1.4s" repeatCount="indefinite"/>
@@ -295,6 +347,8 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
       const bounds = L.latLngBounds(data.map(d => [d.lat, d.lng] as [number, number]));
       this.map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
     }
+
+    this.applyChipFilters();
   }
 
   updateJunctionPin(u: any) {

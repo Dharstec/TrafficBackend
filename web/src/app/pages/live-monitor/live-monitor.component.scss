@@ -13,6 +13,11 @@
   font-family: var(--font-body);
 }
 
+.topbar {
+  @include m.topbar;
+  margin-bottom: 12px;
+}
+
 // ── Heavy traffic alerts ────────────────────────────────────────
 .lm-alert {
   display: flex;
@@ -231,11 +236,12 @@
   padding: 40px;
 }
 
-// ── Map-first shell ──────────────────────────────────────────────
+// ── Map-first shell — map fills almost the entire page now that the
+// alerts/tabs strip above it is hidden. ────────────────────────────
 .lm-map-shell {
   position: relative;
-  height: calc(100vh - 168px);
-  min-height: 520px;
+  height: calc(100vh - 56px);
+  min-height: 560px;
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-md);
@@ -259,86 +265,143 @@
 // Angular's rendering pipeline, so component-scoped (emulated encapsulation)
 // selectors never match them. See src/styles.scss.
 
-// ── Rounded search bar ─────────────────────────
-.lm-searchbar {
+// ── Floating filter chips — Google-Maps-style pill buttons with
+// glassmorphism, each opening its own dropdown panel; selecting an
+// option applies instantly (no separate "search" step). ────────────
+.lm-chipbar {
   position: absolute;
   top: 14px;
   left: 14px;
   right: 14px;
   z-index: 500;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 8px 6px 16px;
-  @include m.glass-panel(16px);
-  border-radius: 24px;
-  box-shadow: var(--shadow-md), var(--glass-highlight);
   animation: lm-fade-in 0.35s ease;
 }
 
-.lm-searchbar-icon {
-  color: var(--g-text-secondary);
-  font-size: 0.95rem;
-  flex: 0 0 auto;
-}
-
-.lm-searchbar-fields {
-  flex: 1;
+.lm-chipbar-scroll {
   display: flex;
-  align-items: center;
-  gap: 2px;
+  align-items: flex-start;
+  gap: 8px;
   overflow-x: auto;
+  overflow-y: visible;
+  padding: 2px 2px 10px;
   scrollbar-width: none;
   &::-webkit-scrollbar { display: none; }
 }
 
-.lm-chip-divider {
-  width: 1px;
-  height: 20px;
-  background: var(--g-border);
+.lm-fchip-group {
+  position: relative;
   flex: 0 0 auto;
 }
 
-.lm-chip {
+.lm-fchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   border: none;
-  background: transparent;
+  @include m.glass-panel(16px);
+  border-radius: 20px;
+  padding: 9px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
   color: var(--g-text);
-  font-size: 0.82rem;
-  padding: 8px 10px;
-  border-radius: 16px;
-  outline: none;
-  cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm), var(--glass-highlight);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
 
-  &:hover, &:focus {
-    background: var(--color-surface-alt);
+  i {
+    font-size: 0.78rem;
+    color: var(--g-text-secondary);
+    transition: transform 0.15s ease, color 0.15s ease;
+  }
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md), var(--glass-highlight);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &.has-value {
+    background: rgba(var(--rgb-primary), 0.14);
+    color: var(--g-blue-dark);
+    i { color: var(--g-blue-dark); }
+  }
+
+  &.open {
+    background: var(--g-blue);
+    color: #fff;
+    i { color: #fff; }
+    .lm-fchip-caret { transform: rotate(180deg); }
   }
 }
 
-.lm-chip-num {
-  width: 90px;
-  cursor: text;
+.lm-fchip-caret {
+  font-size: 0.6rem !important;
 }
 
-.lm-searchbar-btn {
-  flex: 0 0 auto;
-  width: 40px;
-  height: 40px;
-  border: none;
-  border-radius: 50%;
-  background: var(--g-blue);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
-  cursor: pointer;
-  box-shadow: 0 1px 3px rgba(var(--rgb-primary), 0.5);
-  transition: background 0.15s, transform 0.15s;
+.lm-fchip-clear {
+  color: v.$color-danger;
+  i { color: v.$color-danger; }
+  &:hover { background: rgba(v.$color-danger, 0.08); }
+}
 
-  &:hover { background: var(--g-blue-dark); transform: translateY(-1px); }
-  &:active { transform: translateY(0); }
+// position:fixed (not absolute) and anchored via chipPanelPos, computed
+// from the clicked chip's getBoundingClientRect() — the chip row's
+// horizontal scrolling forces its overflow-y to clip too (a CSS quirk:
+// overflow-x:auto + overflow-y:visible computes to overflow-y:auto), so an
+// absolutely positioned dropdown nested inside it would get cut off.
+.lm-fchip-panel {
+  position: fixed;
+  min-width: 180px;
+  max-height: 260px;
+  overflow-y: auto;
+  z-index: 510;
+  @include m.glass-panel(20px);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md), var(--glass-highlight);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: lm-chip-pop 0.16s ease;
+
+  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+}
+
+.lm-fchip-opt {
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: var(--g-text);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease;
+
+  &:hover { background: var(--color-surface-alt); }
+
+  &.selected {
+    background: rgba(var(--rgb-primary), 0.14);
+    color: var(--g-blue-dark);
+    font-weight: 600;
+  }
+}
+
+.lm-chip-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 490;
+}
+
+@keyframes lm-chip-pop {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 // ── Legend ─────────────────────────────────────────────────────
@@ -348,8 +411,8 @@
   left: 14px;
   z-index: 500;
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
+  flex-direction: column;
+  gap: 6px;
   padding: 8px 14px;
   background: rgba(var(--rgb-surface), 0.75);
   backdrop-filter: blur(12px);
@@ -359,6 +422,18 @@
   font-size: 0.68rem;
   color: var(--g-text-secondary);
   max-width: 60%;
+}
+
+.lm-legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.lm-legend-divider {
+  height: 1px;
+  background: var(--g-border);
 }
 
 .lm-legend-item {
@@ -375,15 +450,28 @@
   display: inline-block;
 }
 
+// Size legend — mirrors the pin-size tiers driven by delay minutes.
+.lm-legend-pin {
+  display: inline-block;
+  border-radius: 50%;
+  background: var(--g-text-secondary);
+  flex: 0 0 auto;
+}
+
+.lm-legend-pin-sm { width: 7px; height: 7px; }
+.lm-legend-pin-md { width: 10px; height: 10px; }
+.lm-legend-pin-lg { width: 13px; height: 13px; }
+.lm-legend-pin-xl { width: 16px; height: 16px; }
+
 // ── Floating results panel ────────────────────────────────────
 .lm-panel {
   position: absolute;
-  top: 76px;
+  top: 14px;
   right: 14px;
   bottom: 14px;
   width: 400px;
   max-width: calc(100% - 28px);
-  z-index: 400;
+  z-index: 560;
   display: flex;
   flex-direction: column;
   @include m.glass-panel(20px);
@@ -626,7 +714,7 @@
     overflow: hidden;
     box-shadow: var(--shadow-md);
   }
-  .lm-searchbar {
+  .lm-chipbar {
     position: relative;
     top: auto;
     left: auto;
