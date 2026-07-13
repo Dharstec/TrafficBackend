@@ -5,6 +5,7 @@ import * as L from 'leaflet';
 @Component({
   selector: 'app-map-view',
   templateUrl: './map-view.component.html',
+  styleUrls: ['./map-view.component.scss'],
 })
 export class MapViewComponent implements OnInit, AfterViewInit {
   trafficData: any[] = [];

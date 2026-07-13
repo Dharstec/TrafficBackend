@@ -1,0 +1,126 @@
+@use 'variables' as v;
+@use 'mixins' as m;
+
+.topbar {
+  @include m.topbar;
+}
+
+.topbar-title {
+  @include m.topbar-title;
+}
+
+.mode-switch {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
+
+  button {
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+
+    &.active {
+      background: var(--color-primary-500);
+      color: #fff;
+    }
+  }
+}
+
+.field-input {
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.82rem;
+  @include m.focus-ring;
+
+  &--compact {
+    width: auto;
+  }
+}
+
+.btn-solid-success {
+  @include m.btn-solid(v.$color-success, darken(#2fbe7a, 8%));
+}
+
+.map-frame {
+  height: 560px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border);
+}
+
+.table-card {
+  @include m.table-card;
+}
+
+.table-card-title {
+  @include m.table-card-title;
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+
+  &--last {
+    margin-bottom: 14px;
+  }
+}
+
+.legend-dot {
+  border-radius: 50%;
+  flex: 0 0 auto;
+
+  &--usual { width: 20px; height: 20px; background: v.$color-success; }
+  &--normal { width: 26px; height: 26px; background: v.$color-warning; }
+  &--intermediate { width: 32px; height: 32px; background: v.$color-danger; }
+  &--heavy { width: 40px; height: 40px; background: v.$color-heavy; }
+}
+
+.legend-divider {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 14px 0;
+}
+
+.junction-mini-card {
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.cell-strong {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.cell-small {
+  font-size: 0.82rem;
+}
+
+.cell-faint {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+.congestion-dot {
+  @include m.dot(currentColor);
+}
+
+.dot-usual { color: v.$color-success; }
+.dot-normal { color: v.$color-warning; }
+.dot-intermediate { color: v.$color-danger; }
+.dot-heavy { color: v.$color-heavy; }

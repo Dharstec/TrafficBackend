@@ -1,0 +1,176 @@
+@use 'variables' as v;
+@use 'mixins' as m;
+
+.topbar {
+  @include m.topbar;
+}
+
+.topbar-title {
+  @include m.topbar-title;
+}
+
+.topbar-live {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+}
+
+.live-dot {
+  @include m.live-dot;
+}
+
+// ── Stat cards — asymmetric bento grid ───────────────────────────
+// One hero tile + one tall bookend + four square tiles between them.
+// Deliberately not a uniform equal-width grid.
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+
+  @include m.respond-up(v.$breakpoint-lg) {
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: repeat(2, minmax(150px, auto));
+  }
+}
+
+.stat-card {
+  @include m.stat-card(var(--color-primary-500));
+  display: flex;
+  flex-direction: column;
+
+  @include m.respond-up(v.$breakpoint-lg) {
+    &.stat-card--hero { grid-column: 1 / 3; grid-row: 1 / 3; }
+    &:nth-child(2) { grid-column: 3 / 4; grid-row: 1 / 2; }
+    &:nth-child(3) { grid-column: 4 / 5; grid-row: 1 / 2; }
+    &:nth-child(4) { grid-column: 3 / 4; grid-row: 2 / 3; }
+    &:nth-child(5) { grid-column: 4 / 5; grid-row: 2 / 3; }
+    &.stat-card--tall { grid-column: 5 / 6; grid-row: 1 / 3; }
+  }
+}
+
+.stat-card--hero,
+.stat-card--tall {
+  justify-content: center;
+
+  .stat-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 1.35rem;
+    margin-bottom: 16px;
+  }
+
+  .stat-value {
+    font-size: 2.75rem;
+  }
+}
+
+.stat-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  margin-bottom: 12px;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+}
+
+.stat-card--info .stat-icon { background: rgba(v.$color-info, 0.14); color: v.$color-info; }
+.stat-card--success .stat-icon { background: rgba(v.$color-success, 0.14); color: v.$color-success; }
+.stat-card--warning .stat-icon { background: rgba(v.$color-warning, 0.14); color: v.$color-warning; }
+.stat-card--danger .stat-icon { background: rgba(v.$color-danger, 0.14); color: v.$color-danger; }
+.stat-card--heavy .stat-icon { background: rgba(v.$color-heavy, 0.14); color: v.$color-heavy; }
+
+.stat-label {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.stat-value {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--color-text);
+  margin: 4px 0;
+}
+
+.stat-value--info { color: v.$color-info; }
+.stat-value--success { color: v.$color-success; }
+.stat-value--warning { color: v.$color-warning; }
+.stat-value--danger { color: v.$color-danger; }
+.stat-value--heavy { color: v.$color-heavy; }
+
+.stat-sub {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+// ── Table cards ─────────────────────────────────────────────────
+.table-card {
+  @include m.table-card;
+}
+
+.table-card-title {
+  @include m.table-card-title;
+
+  i { color: var(--color-primary-500); }
+}
+
+.data-table {
+  @include m.data-table;
+}
+
+.cell-strong {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--color-text);
+}
+
+.cell-muted {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.empty-row {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 2rem 0;
+  font-size: 0.85rem;
+}
+
+.badge {
+  @include m.badge-pill(v.$primary-500);
+}
+
+.badge-usual { @include m.badge-pill(v.$color-success); }
+.badge-normal { @include m.badge-pill(v.$color-warning); }
+.badge-intermediate { @include m.badge-pill(v.$color-danger); }
+.badge-heavy { @include m.badge-pill(v.$color-heavy); }
+
+.congestion-dot {
+  @include m.dot(currentColor);
+}
+
+.dot-usual { color: v.$color-success; }
+.dot-normal { color: v.$color-warning; }
+.dot-intermediate { color: v.$color-danger; }
+.dot-heavy { color: v.$color-heavy; }
+
+.incident-row {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.incident-time {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}

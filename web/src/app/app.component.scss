@@ -1,0 +1,71 @@
+// Mobile nav drawer is pure CSS (checkbox hack) — no component state,
+// so the sidebar's open/closed status never touches TypeScript.
+
+.sidebar-toggle-checkbox {
+  display: none;
+}
+
+.sidebar-toggle-btn {
+  display: none;
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 300;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--gradient-primary);
+  color: #fff;
+  font-size: 1.2rem;
+  box-shadow: var(--shadow-glow-primary);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+
+  &:active {
+    transform: scale(0.94);
+  }
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 991px) {
+  .sidebar-toggle-btn {
+    display: flex;
+  }
+
+  // Target the inner .sidebar div, not the app-sidebar host: the host has
+  // no intrinsic width (its only child is itself position:fixed, so it
+  // doesn't contribute to the host's box), so a percentage translateX on
+  // the host resolves against a zero-width box and does nothing. The
+  // child .sidebar has a real `width: var(--sidebar-width)` to translate.
+  ::ng-deep app-sidebar .sidebar {
+    z-index: 250;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 240;
+    background: rgba(11, 13, 23, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  .sidebar-toggle-checkbox:checked ~ .sidebar-backdrop {
+    display: block;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .sidebar-toggle-checkbox:checked ~ ::ng-deep app-sidebar .sidebar {
+    transform: translateX(0);
+  }
+}

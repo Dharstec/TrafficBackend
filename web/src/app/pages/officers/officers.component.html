@@ -1,95 +1,95 @@
 <div class="topbar">
-  <h5 class="mb-0 fw-bold"><i class="bi bi-person-badge me-2 text-primary"></i>Traffic Police Management</h5>
-  <button class="btn btn-primary btn-sm" *ngIf="activeTab==='officers'" (click)="openAdd()">
-    <i class="bi bi-plus-lg me-1"></i>Add Officer
+  <h5 class="topbar-title"><i class="bi bi-person-badge"></i>Traffic Police Management</h5>
+  <button class="btn-solid" *ngIf="activeTab==='officers'" (click)="openAdd()">
+    <i class="bi bi-plus-lg"></i>Add Officer
   </button>
 </div>
 
-<ul class="nav nav-tabs mb-3">
-  <li class="nav-item">
-    <a class="nav-link" [class.active]="activeTab==='officers'" (click)="activeTab='officers'" style="cursor:pointer">
-      <i class="bi bi-people me-1"></i>Officers ({{ officers.length }})
+<ul class="nav-tabs">
+  <li>
+    <a class="nav-link" [class.active]="activeTab==='officers'" (click)="activeTab='officers'">
+      <i class="bi bi-people"></i>Officers ({{ officers.length }})
     </a>
   </li>
-  <li class="nav-item">
-    <a class="nav-link" [class.active]="activeTab==='incidents'" (click)="activeTab='incidents'" style="cursor:pointer">
-      <i class="bi bi-exclamation-circle me-1"></i>Incidents ({{ incidents.length }})
+  <li>
+    <a class="nav-link" [class.active]="activeTab==='incidents'" (click)="activeTab='incidents'">
+      <i class="bi bi-exclamation-circle"></i>Incidents ({{ incidents.length }})
     </a>
   </li>
 </ul>
 
 <!-- Add / Edit Officer Form -->
-<div class="table-card mb-4" *ngIf="showForm && activeTab==='officers'">
-  <h6 class="fw-bold mb-3">{{ editId ? 'Edit Officer' : 'Add New Officer' }}</h6>
+<div class="table-card tw-mb-6" *ngIf="showForm && activeTab==='officers'">
+  <h6 class="table-card-title">{{ editId ? 'Edit Officer' : 'Add New Officer' }}</h6>
 
-  <div *ngIf="errorMsg" class="alert alert-danger py-2 small">{{ errorMsg }}</div>
+  <div *ngIf="errorMsg" class="error-banner">{{ errorMsg }}</div>
 
-  <div class="row g-3">
-    <div class="col-md-4">
-      <label class="form-label small fw-semibold">Full Name *</label>
-      <input class="form-control" [(ngModel)]="form.name" placeholder="Officer name" />
+  <div class="tw-grid tw-grid-cols-1 sm:tw-grid-cols-2 lg:tw-grid-cols-4 tw-gap-4">
+    <div class="lg:tw-col-span-2">
+      <label class="field-label">Full Name *</label>
+      <input class="field-input" [(ngModel)]="form.name" placeholder="Officer name" />
     </div>
-    <div class="col-md-3" *ngIf="!editId">
-      <label class="form-label small fw-semibold">Badge Number *</label>
-      <input class="form-control" [(ngModel)]="form.badge_number" placeholder="e.g. FO006" />
+    <div *ngIf="!editId">
+      <label class="field-label">Badge Number *</label>
+      <input class="field-input" [(ngModel)]="form.badge_number" placeholder="e.g. FO006" />
     </div>
-    <div class="col-md-3" *ngIf="editId">
-      <label class="form-label small fw-semibold">Badge Number</label>
-      <input class="form-control" [value]="form.badge_number" disabled />
+    <div *ngIf="editId">
+      <label class="field-label">Badge Number</label>
+      <input class="field-input field-input--readonly" [value]="form.badge_number" disabled />
     </div>
-    <div class="col-md-3">
-      <label class="form-label small fw-semibold">Phone</label>
-      <input class="form-control" [(ngModel)]="form.phone" placeholder="Mobile number" />
+    <div>
+      <label class="field-label">Phone</label>
+      <input class="field-input" [(ngModel)]="form.phone" placeholder="Mobile number" />
     </div>
-    <div class="col-md-4" *ngIf="!editId">
-      <label class="form-label small fw-semibold">Email *</label>
-      <input class="form-control" [(ngModel)]="form.email" placeholder="officer@police.gov.in" />
+    <div class="lg:tw-col-span-2" *ngIf="!editId">
+      <label class="field-label">Email *</label>
+      <input class="field-input" [(ngModel)]="form.email" placeholder="officer@police.gov.in" />
     </div>
-    <div class="col-md-4" *ngIf="editId">
-      <label class="form-label small fw-semibold">Email</label>
-      <input class="form-control" [value]="form.email" disabled />
+    <div class="lg:tw-col-span-2" *ngIf="editId">
+      <label class="field-label">Email</label>
+      <input class="field-input field-input--readonly" [value]="form.email" disabled />
     </div>
-    <div class="col-md-3" *ngIf="!editId">
-      <label class="form-label small fw-semibold">Password</label>
-      <input class="form-control" [(ngModel)]="form.password" placeholder="Default: Field@123" />
+    <div *ngIf="!editId">
+      <label class="field-label">Password</label>
+      <input class="field-input" [(ngModel)]="form.password" placeholder="Default: Field@123" />
     </div>
-    <div class="col-md-3">
-      <label class="form-label small fw-semibold">Role</label>
-      <select class="form-select" [(ngModel)]="form.role">
+    <div>
+      <label class="field-label">Role</label>
+      <select class="field-input" [(ngModel)]="form.role">
         <option value="field_officer">Field Officer</option>
         <option value="supervisor">Supervisor</option>
         <option value="admin">Admin</option>
       </select>
     </div>
-    <div class="col-md-5">
-      <label class="form-label small fw-semibold">Assigned Junction</label>
-      <select class="form-select" [(ngModel)]="form.assigned_junction_id">
+    <div class="lg:tw-col-span-2">
+      <label class="field-label">Assigned Junction</label>
+      <select class="field-input" [(ngModel)]="form.assigned_junction_id">
         <option value="">— None —</option>
         <option *ngFor="let j of junctions" [value]="j.id">{{ j.short_name }} — {{ j.name }}</option>
       </select>
     </div>
-    <div class="col-md-2 d-flex align-items-end" *ngIf="editId">
-      <div class="form-check form-switch mb-2">
+    <div class="tw-flex tw-items-end" *ngIf="editId">
+      <div class="form-check form-switch tw-mb-2">
         <input class="form-check-input" type="checkbox" [(ngModel)]="form.is_active" id="activeToggle" />
-        <label class="form-check-label small" for="activeToggle">Active</label>
+        <label class="field-hint" for="activeToggle">Active</label>
       </div>
     </div>
   </div>
 
-  <div class="mt-3 d-flex gap-2">
-    <button class="btn btn-primary btn-sm" (click)="save()" [disabled]="saving">
-      <span *ngIf="saving" class="spinner-border spinner-border-sm me-1"></span>
+  <div class="tw-mt-4 tw-flex tw-gap-2">
+    <button class="btn-solid" (click)="save()" [disabled]="saving">
+      <span *ngIf="saving" class="spinner-border spinner-border-sm tw-mr-1"></span>
       {{ editId ? 'Update Officer' : 'Save Officer' }}
     </button>
-    <button class="btn btn-outline-secondary btn-sm" (click)="showForm=false">Cancel</button>
+    <button class="btn-ghost" (click)="showForm=false">Cancel</button>
   </div>
 </div>
 
 <!-- Officers Table -->
 <div class="table-card" *ngIf="activeTab==='officers'">
   <div class="table-responsive">
-    <table class="table table-hover align-middle">
-      <thead class="table-light">
+    <table class="data-table">
+      <thead>
         <tr>
           <th>Name</th><th>Badge</th><th>Role</th><th>Phone</th>
           <th>Assigned Junction</th><th>Check-in Status</th><th>Active</th><th>Actions</th>
@@ -97,8 +97,8 @@
       </thead>
       <tbody>
         <tr *ngFor="let o of officers">
-          <td class="fw-semibold">{{ o.name }}</td>
-          <td class="text-muted small">{{ o.badge_number }}</td>
+          <td class="cell-strong">{{ o.name }}</td>
+          <td class="cell-muted cell-small">{{ o.badge_number }}</td>
           <td>
             <span class="badge"
               [class.bg-danger]="o.role==='admin'"
@@ -107,11 +107,11 @@
               {{ o.role | titlecase }}
             </span>
           </td>
-          <td class="small">{{ o.phone || '—' }}</td>
-          <td class="small">{{ o.junction_name || '—' }}</td>
+          <td class="cell-small">{{ o.phone || '—' }}</td>
+          <td class="cell-small">{{ o.junction_name || '—' }}</td>
           <td>
             <span *ngIf="o.checked_in_junction_name" class="badge bg-success">
-              <i class="bi bi-geo-alt me-1"></i>{{ o.checked_in_junction_name }}
+              <i class="bi bi-geo-alt"></i>{{ o.checked_in_junction_name }}
             </span>
             <span *ngIf="!o.checked_in_junction_name" class="badge bg-secondary">Not checked in</span>
           </td>
@@ -121,13 +121,13 @@
             </span>
           </td>
           <td>
-            <button class="btn btn-sm btn-outline-primary" (click)="openEdit(o)">
+            <button class="btn-outline-primary" (click)="openEdit(o)">
               <i class="bi bi-pencil"></i> Edit
             </button>
           </td>
         </tr>
         <tr *ngIf="!officers.length">
-          <td colspan="8" class="text-center text-muted py-3">No officers found</td>
+          <td colspan="8" class="empty-row">No officers found</td>
         </tr>
       </tbody>
     </table>
@@ -137,16 +137,16 @@
 <!-- Incidents Table -->
 <div class="table-card" *ngIf="activeTab==='incidents'">
   <div class="table-responsive">
-    <table class="table table-hover align-middle">
-      <thead class="table-light">
+    <table class="data-table">
+      <thead>
         <tr><th>Type</th><th>Officer</th><th>Junction</th><th>Description</th><th>Status</th><th>Reported</th><th>Action</th></tr>
       </thead>
       <tbody>
         <tr *ngFor="let inc of incidents">
-          <td><span class="badge bg-warning text-dark">{{ inc.type | titlecase }}</span></td>
-          <td class="small fw-semibold">{{ inc.officer_name }}</td>
-          <td class="small">{{ inc.junction_name || '—' }}</td>
-          <td class="small text-muted" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ inc.description }}</td>
+          <td><span class="badge bg-warning">{{ inc.type | titlecase }}</span></td>
+          <td class="cell-strong cell-small">{{ inc.officer_name }}</td>
+          <td class="cell-small">{{ inc.junction_name || '—' }}</td>
+          <td class="cell-muted cell-small cell-ellipsis">{{ inc.description }}</td>
           <td>
             <span class="badge"
               [class.bg-danger]="inc.status==='open'"
@@ -155,13 +155,13 @@
               {{ inc.status }}
             </span>
           </td>
-          <td class="small text-muted">{{ inc.created_at | date:'dd MMM, HH:mm' }}</td>
+          <td class="cell-muted cell-small">{{ inc.created_at | date:'dd MMM, HH:mm' }}</td>
           <td>
-            <button *ngIf="inc.status!=='resolved'" class="btn btn-sm btn-outline-success" (click)="resolveIncident(inc.id)">Resolve</button>
+            <button *ngIf="inc.status!=='resolved'" class="btn-outline-success" (click)="resolveIncident(inc.id)">Resolve</button>
           </td>
         </tr>
         <tr *ngIf="!incidents.length">
-          <td colspan="7" class="text-center text-muted py-3">No incidents reported</td>
+          <td colspan="7" class="empty-row">No incidents reported</td>
         </tr>
       </tbody>
     </table>

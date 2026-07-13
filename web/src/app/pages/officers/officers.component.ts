@@ -5,6 +5,7 @@ import { JunctionService } from '../../core/services/junction.service';
 @Component({
   selector: 'app-officers',
   templateUrl: './officers.component.html',
+  styleUrls: ['./officers.component.scss'],
 })
 export class OfficersComponent implements OnInit {
   officers: any[] = [];

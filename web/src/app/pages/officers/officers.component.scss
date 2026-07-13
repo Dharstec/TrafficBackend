@@ -1,0 +1,173 @@
+@use 'variables' as v;
+@use 'mixins' as m;
+
+.topbar {
+  @include m.topbar;
+}
+
+.topbar-title {
+  @include m.topbar-title;
+}
+
+.btn-solid {
+  @include m.btn-solid;
+}
+
+.btn-ghost {
+  @include m.btn-ghost;
+}
+
+.btn-outline-primary {
+  @include m.btn-outline(var(--color-primary-500));
+}
+
+.btn-outline-success {
+  @include m.btn-outline(v.$color-success);
+}
+
+// ── Tabs ────────────────────────────────────────────────────────
+.nav-tabs {
+  display: flex;
+  gap: 4px;
+  list-style: none;
+  padding: 4px;
+  margin: 0 0 1.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-xs);
+  width: fit-content;
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    background: var(--color-surface-alt);
+  }
+
+  &.active {
+    background: var(--color-primary-500);
+    color: #fff;
+  }
+}
+
+.table-card {
+  @include m.table-card;
+}
+
+.table-card-title {
+  @include m.table-card-title;
+}
+
+.error-banner {
+  background: rgba(v.$color-danger, 0.1);
+  border: 1px solid rgba(v.$color-danger, 0.25);
+  color: v.$color-danger;
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  margin-bottom: 1rem;
+}
+
+// ── Form fields ─────────────────────────────────────────────────
+.field-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: 5px;
+}
+
+.field-input {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  transition: border-color 0.15s ease;
+  @include m.focus-ring;
+
+  &:focus {
+    border-color: var(--color-primary-400);
+  }
+
+  &--readonly {
+    background: var(--color-surface-alt);
+    color: var(--color-text-muted);
+  }
+}
+
+.field-hint {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.form-check-input:checked {
+  background-color: var(--color-primary-500);
+  border-color: var(--color-primary-500);
+}
+
+.data-table {
+  @include m.data-table;
+}
+
+.cell-strong {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.cell-muted {
+  color: var(--color-text-muted);
+}
+
+.cell-small {
+  font-size: 0.82rem;
+}
+
+.cell-ellipsis {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty-row {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 1.5rem 0;
+  font-size: 0.85rem;
+}
+
+// ── Status badges (class bound to component state via [class.bg-*]) ──
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+}
+
+// !important is required here: Bootstrap's own .bg-* utilities are defined
+// with !important, so a plain override loses the background (though not
+// text color) fight and produces low-contrast badges.
+.badge.bg-danger { background: rgba(v.$color-danger, 0.12) !important; color: v.$color-danger; }
+.badge.bg-warning { background: rgba(v.$color-warning, 0.12) !important; color: darken(#ff9800, 15%); }
+.badge.bg-primary { background: rgba(v.$primary-500, 0.12) !important; color: var(--color-primary-500); }
+.badge.bg-success { background: rgba(v.$color-success, 0.12) !important; color: darken(#4caf50, 10%); }
+.badge.bg-secondary { background: var(--color-surface-alt) !important; color: var(--color-text-muted); }

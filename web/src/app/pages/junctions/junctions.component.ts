@@ -5,6 +5,7 @@ import { JunctionRouteService } from '../../core/services/junction-route.service
 @Component({
   selector: 'app-junctions',
   templateUrl: './junctions.component.html',
+  styleUrls: ['./junctions.component.scss'],
 })
 export class JunctionsComponent implements OnInit {
   junctions: any[] = [];

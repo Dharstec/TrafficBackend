@@ -1,4 +1,11 @@
 <ng-container *ngIf="auth.isLoggedIn; else loginOnly">
+  <!-- CSS-only mobile drawer toggle (no component state involved) -->
+  <input type="checkbox" id="sidebar-toggle" class="sidebar-toggle-checkbox" />
+  <label for="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Toggle navigation">
+    <i class="bi bi-list"></i>
+  </label>
+  <label for="sidebar-toggle" class="sidebar-backdrop"></label>
+
   <app-sidebar></app-sidebar>
   <div class="main-content">
     <router-outlet></router-outlet>

@@ -1,133 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+// ── Design tokens — premium glassmorphism ───────────────────────────
+// Dark is primary (per brief); light is fully supported via ThemeService.
+// Glass blur is used sparingly — sidebar, sticky header, login card,
+// overlays — not on every card, since heavy backdrop-filter over a dense
+// data table + live Leaflet map hurts both legibility and perf. Regular
+// cards get a soft translucent surface + layered shadow instead: reads
+// as "premium depth" without paying for blur everywhere.
 :root {
-  --primary: #1a237e;
-  --sidebar-width: 240px;
+  // Brand gradient — indigo → violet → fuchsia
+  --color-primary-50: #eef0ff;
+  --color-primary-100: #e0e3ff;
+  --color-primary-200: #c7cbff;
+  --color-primary-300: #a5a9ff;
+  --color-primary-400: #818cf8;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+  --color-primary-800: #3730a3;
+  --color-primary-900: #2e2a7d;
+  --rgb-primary: 99, 102, 241;
+
+  --color-secondary: #a855f7;
+  --rgb-secondary: 168, 85, 247;
+
+  // Accent — cyan, used for live/data highlights, sparingly
+  --color-accent: #22d3ee;
+  --color-accent-ink: #04222b;
+  --rgb-accent: 34, 211, 238;
+
+  --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 55%, #a855f7 100%);
+  --gradient-accent: linear-gradient(135deg, #22d3ee 0%, #6366f1 100%);
+
+  // Surfaces (light mode defaults) — soft cool gray bg so glass panels
+  // have something to float above.
+  --color-bg: #f3f4f8;
+  --color-surface: rgba(255, 255, 255, 0.72);
+  --color-surface-solid: #ffffff;
+  --color-surface-alt: rgba(255, 255, 255, 0.45);
+  --color-border: rgba(15, 23, 42, 0.08);
+  --color-text: #12131a;
+  --color-text-muted: #6b7280;
+  --color-disabled: #c7cad1;
+  --rgb-surface: 255, 255, 255;
+
+  // Semantic — congestion levels. Matched exactly to the hex values
+  // hardcoded in traffic.service.ts:getCongestionColor() and
+  // live-monitor.component.ts (duplicate color map + officer pin color),
+  // which drive the live map pins — kept identical so the tags/pins we
+  // style don't drift from those TS-controlled colors.
+  --color-success: #4caf50; // usual
+  --color-warning: #ff9800; // normal
+  --color-danger: #f44336; // intermediate
+  --color-heavy: #7b1fa2; // heavy
+  --color-info: #1976d2; // officers / live
+  --sidebar-width: 272px;
+
+  // Typography
+  --font-display: 'Manrope', 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+
+  // Large, soft radii — layered depth over sharp edges
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 28px;
+
+  // Soft layered shadows — the app's one depth language
+  --shadow-xs: 0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-sm: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 12px 40px rgba(15, 23, 42, 0.14), 0 2px 8px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 24px 64px rgba(15, 23, 42, 0.2);
+  --shadow-glow-primary: 0 0 0 1px rgba(99, 102, 241, 0.18), 0 8px 32px rgba(99, 102, 241, 0.28);
+  --glass-blur: 20px;
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
-body { background: #f0f2f5; font-family: 'Segoe UI', sans-serif; margin: 0; }
+:root[data-theme='dark'] {
+  --color-bg: #0a0b10;
+  --color-surface: rgba(255, 255, 255, 0.045);
+  --color-surface-solid: #14151d;
+  --color-surface-alt: rgba(255, 255, 255, 0.025);
+  --color-border: rgba(255, 255, 255, 0.09);
+  --color-text: #f3f4f6;
+  --color-text-muted: #9aa1ac;
+  --color-disabled: #3a3c46;
+  --rgb-surface: 20, 21, 29;
 
-.sidebar {
-  width: var(--sidebar-width);
-  min-height: 100vh;
-  background: var(--primary);
-  color: #fff;
-  position: fixed;
-  top: 0; left: 0;
-  z-index: 100;
-  display: flex;
-  flex-direction: column;
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 12px 40px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.55);
+  --shadow-glow-primary: 0 0 0 1px rgba(99, 102, 241, 0.35), 0 8px 32px rgba(99, 102, 241, 0.4);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-.sidebar .logo {
-  padding: 20px 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.15);
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --color-bg: #0a0b10;
+    --color-surface: rgba(255, 255, 255, 0.045);
+    --color-surface-solid: #14151d;
+    --color-surface-alt: rgba(255, 255, 255, 0.025);
+    --color-border: rgba(255, 255, 255, 0.09);
+    --color-text: #f3f4f6;
+    --color-text-muted: #9aa1ac;
+    --color-disabled: #3a3c46;
+    --rgb-surface: 20, 21, 29;
+
+    --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 12px 40px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.55);
+    --shadow-glow-primary: 0 0 0 1px rgba(99, 102, 241, 0.35), 0 8px 32px rgba(99, 102, 241, 0.4);
+    --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
 }
 
-.sidebar nav a {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 20px;
-  color: rgba(255,255,255,0.8);
-  text-decoration: none;
-  font-size: 0.9rem;
-  border-left: 3px solid transparent;
-  transition: all 0.2s;
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  margin: 0;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-.sidebar nav a:hover,
-.sidebar nav a.active {
-  background: rgba(255,255,255,0.1);
-  color: #fff;
-  border-left-color: #42a5f5;
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
 }
-
-.sidebar nav a i { font-size: 1.1rem; width: 20px; }
 
 .main-content {
   margin-left: var(--sidebar-width);
   min-height: 100vh;
-  padding: 24px;
+  padding: 28px 32px;
 }
 
-.topbar {
-  background: #fff;
-  padding: 12px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-  margin-bottom: 24px;
-  border-radius: 8px;
-}
-
-.stat-card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  border-left: 4px solid;
-}
-
-.stat-card.green  { border-color: #4caf50; }
-.stat-card.orange { border-color: #ff9800; }
-.stat-card.red    { border-color: #f44336; }
-.stat-card.dark   { border-color: #7b1fa2; }
-.stat-card.blue   { border-color: #1976d2; }
-
-.congestion-dot {
-  display: inline-block;
-  width: 14px; height: 14px;
-  border-radius: 50%;
-}
-.dot-usual        { background: #4caf50; }
-.dot-normal       { background: #ff9800; }
-.dot-intermediate { background: #f44336; }
-.dot-heavy        { background: #7b1fa2; }
-
-.map-container { height: 500px; border-radius: 12px; overflow: hidden; }
-
-.login-page {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
-  display: flex; align-items: center; justify-content: center;
-}
-
-.login-card {
-  background: #fff;
-  border-radius: 16px;
-  padding: 40px;
-  width: 380px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-}
-
-.badge-usual        { background: #4caf50; color: #fff; }
-.badge-normal       { background: #ff9800; color: #fff; }
-.badge-intermediate { background: #f44336; color: #fff; }
-.badge-heavy        { background: #7b1fa2; color: #fff; }
-
-#map { height: 500px; }
-
-.table-card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+@media (max-width: 991px) {
+  .main-content {
+    margin-left: 0;
+  }
 }
 
 /* Junction name labels on web map */
 .junction-web-label {
-  background: rgba(255,255,255,0.95) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
   border: none !important;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.2) !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.18) !important;
   font-size: 11px !important;
   font-weight: 700 !important;
-  color: #1a237e !important;
-  padding: 2px 6px !important;
-  border-radius: 4px !important;
+  color: var(--color-primary-700) !important;
+  padding: 3px 8px !important;
+  border-radius: 8px !important;
   white-space: nowrap !important;
+  font-family: var(--font-body) !important;
 }
 .junction-web-label::before { display: none !important; }
 
@@ -136,13 +162,13 @@ body { background: #f0f2f5; font-family: 'Segoe UI', sans-serif; margin: 0; }
 .lm-pin-icon {
   background: transparent !important;
   border: none !important;
-  filter: drop-shadow(0 2px 3px rgba(32, 33, 36, 0.35));
-  transition: filter 0.2s;
+  filter: drop-shadow(0 4px 10px rgba(15, 23, 42, 0.35));
+  transition: filter 0.2s ease;
 }
 
 .lm-pin-icon.lm-pin-selected {
   z-index: 1000 !important;
-  filter: drop-shadow(0 4px 6px rgba(32, 33, 36, 0.45));
+  filter: drop-shadow(0 6px 16px rgba(99, 102, 241, 0.5));
   animation: lm-pin-pop 0.4s ease;
 }
 

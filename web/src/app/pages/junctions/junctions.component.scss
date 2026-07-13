@@ -1,0 +1,170 @@
+@use 'variables' as v;
+@use 'mixins' as m;
+
+.topbar {
+  @include m.topbar;
+}
+
+.topbar-title {
+  @include m.topbar-title;
+}
+
+.btn-solid {
+  @include m.btn-solid;
+}
+
+.btn-ghost {
+  @include m.btn-ghost;
+}
+
+.btn-solid-info {
+  @include m.btn-solid(v.$color-info, darken(#3b82f6, 8%));
+}
+
+.btn-outline-info {
+  @include m.btn-outline(v.$color-info);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icon-btn {
+  &--primary { @include m.icon-btn(var(--color-primary-500)); }
+  &--danger { @include m.icon-btn(v.$color-danger); }
+}
+
+.table-card {
+  @include m.table-card;
+}
+
+.table-card-title {
+  @include m.table-card-title;
+}
+
+.data-table {
+  @include m.data-table;
+
+  &--compact {
+    font-size: 0.8rem;
+
+    thead th, tbody td {
+      padding: 8px 10px;
+    }
+  }
+}
+
+.cell-strong {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.cell-muted {
+  color: var(--color-text-muted);
+}
+
+.cell-faint {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+.cell-small {
+  font-size: 0.82rem;
+}
+
+.badge {
+  @include m.badge-pill(v.$primary-500);
+}
+
+.badge-usual { @include m.badge-pill(v.$color-success); }
+.badge-normal { @include m.badge-pill(v.$color-warning); }
+.badge-intermediate { @include m.badge-pill(v.$color-danger); }
+.badge-heavy { @include m.badge-pill(v.$color-heavy); }
+.badge-info { @include m.badge-pill(v.$color-info); }
+
+// ── Form fields ─────────────────────────────────────────────────
+.field-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: 5px;
+}
+
+.field-input {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  @include m.focus-ring;
+
+  &:focus {
+    border-color: var(--color-primary-400);
+  }
+
+  &--readonly {
+    background: var(--color-surface-alt);
+    color: var(--color-text-muted);
+  }
+}
+
+.field-hint {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+
+  &--success {
+    color: v.$color-success;
+  }
+}
+
+// ── Expanded routes panel ────────────────────────────────────────
+.routes-panel-cell {
+  background: var(--color-surface-alt);
+  padding: 20px 24px;
+}
+
+.routes-panel-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: v.$color-info;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.info-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(v.$color-info, 0.08);
+  border: 1px solid rgba(v.$color-info, 0.18);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 0.8rem;
+  color: var(--color-text);
+  margin-bottom: 1rem;
+
+  i {
+    color: v.$color-info;
+    margin-top: 2px;
+  }
+}
+
+.route-form-card {
+  @include m.card-surface();
+  background: var(--color-surface);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.empty-row {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 1rem 0;
+  font-size: 0.85rem;
+}

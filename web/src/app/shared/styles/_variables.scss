@@ -1,0 +1,23 @@
+// Shared SCSS-level constants (compile-time values that CSS custom properties
+// can't express directly, e.g. breakpoints used in @media queries).
+// Runtime design tokens (colors, radii, shadows) live as CSS custom
+// properties in styles.scss so they can be overridden per color-scheme.
+
+$breakpoint-sm: 576px;
+$breakpoint-md: 768px;
+$breakpoint-lg: 992px;
+$breakpoint-xl: 1200px;
+
+// Sass color functions (rgba(), darken(), etc.) need real compile-time color
+// literals — they can't resolve a CSS custom property. These mirror the
+// :root tokens in styles.scss; keep both in sync if a hue changes.
+$primary-500: #6366f1;
+$secondary-500: #a855f7;
+$accent-500: #22d3ee;
+// Matched to traffic.service.ts / live-monitor.component.ts hardcoded
+// congestion + officer-pin colors — see styles.scss for the same note.
+$color-success: #4caf50;
+$color-warning: #ff9800;
+$color-danger: #f44336;
+$color-heavy: #7b1fa2;
+$color-info: #1976d2;
