@@ -43,58 +43,6 @@
   flex-wrap: wrap;
 }
 
-// ── Google free-tier usage meter ────────────────────────────────
-.lmc-usage {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #e8f5e9;
-  color: #2e7d32;
-  border-radius: 10px;
-  padding: 5px 12px;
-
-  i { font-size: 1rem; }
-
-  &.lmc-usage-warn {
-    background: #fff8e1;
-    color: #b26a00;
-    .lmc-usage-fill { background: #ffa000; }
-  }
-
-  &.lmc-usage-danger {
-    background: #ffebee;
-    color: #c62828;
-    .lmc-usage-fill { background: #e53935; }
-  }
-}
-
-.lmc-usage-info {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.lmc-usage-text {
-  font-size: 0.7rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.lmc-usage-bar {
-  width: 110px;
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
-
-.lmc-usage-fill {
-  height: 100%;
-  border-radius: 2px;
-  background: #43a047;
-  transition: width 0.4s ease;
-}
-
 // ── Refresh Now button — the only thing that spends API quota ───
 .lmc-refresh {
   display: inline-flex;

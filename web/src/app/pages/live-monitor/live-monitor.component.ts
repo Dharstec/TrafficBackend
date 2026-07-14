@@ -25,7 +25,6 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   activeTab: 'map' | 'officers' | 'duty' = 'map';
   lastUpdate = new Date();
   refreshing = false;
-  usage: any = null; // Google free-tier usage { calls, limit, remaining }
 
   // Filters for each panel
   searchFreeFlow = '';
@@ -48,7 +47,6 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit() {
     this.load();
-    this.loadUsage();
     this.subs.push(
       this.socket.trafficUpdates$.subscribe(updates => {
         updates.forEach(u => {
@@ -95,31 +93,19 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     this.officerSvc.getAllTodayDuty().subscribe(d => this.todayDuty = d);
   }
 
-  loadUsage() {
-    this.trafficSvc.getUsage().subscribe({
-      next: u => this.usage = u,
-      error: () => {}, // endpoint not deployed yet — badge just stays hidden
-    });
-  }
-
   // Only this button spends Google API quota (auto-refresh is off).
+  // Quota status lives in the backend logs, not in the UI.
   refreshNow() {
     if (this.refreshing) return;
     this.refreshing = true;
     this.trafficSvc.refreshNow().subscribe({
-      next: res => {
-        if (res?.usage) this.usage = res.usage;
+      next: () => {
         this.load();
         this.lastUpdate = new Date();
         this.refreshing = false;
       },
       error: () => { this.refreshing = false; },
     });
-  }
-
-  get usagePercent(): number {
-    if (!this.usage?.limit) return 0;
-    return Math.min(100, Math.round((this.usage.calls / this.usage.limit) * 100));
   }
 
   acknowledgeAlert(i: number) { this.heavyAlerts[i].acknowledged = true; }

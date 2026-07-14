@@ -5,18 +5,7 @@
   </div>
 
   <div class="lmc-header-right">
-    <!-- Google free-tier usage — turns amber at 80%, red at 95% -->
-    <div class="lmc-usage" *ngIf="usage"
-      [class.lmc-usage-warn]="usagePercent >= 80" [class.lmc-usage-danger]="usagePercent >= 95"
-      title="Google API calls used this month (free limit protected)">
-      <i class="bi bi-shield-check"></i>
-      <div class="lmc-usage-info">
-        <span class="lmc-usage-text">{{ usage.calls }} / {{ usage.limit }} free calls</span>
-        <div class="lmc-usage-bar"><div class="lmc-usage-fill" [style.width.%]="usagePercent"></div></div>
-      </div>
-    </div>
-
-    <span class="text-muted small"><i class="bi bi-clock me-1"></i>{{ lastUpdate | date:'HH:mm:ss' }}</span>
+    <span class="text-muted small"><i class="bi bi-clock me-1"></i>{{ lastUpdate | date:'hh:mm:ss a' }}</span>
 
     <button type="button" class="lmc-refresh" (click)="refreshNow()" [disabled]="refreshing"
       title="Call Google API now — data updates only when you click this">
@@ -34,7 +23,7 @@
     <i class="bi bi-exclamation-triangle-fill me-2"></i>
     <strong>HEAVY TRAFFIC</strong> at <strong>{{ alert.junction_name || alert.short_name }}</strong>
     — {{ alert.delay_minutes }} min delay &nbsp;·&nbsp;
-    <span class="text-muted small">{{ alert.time | date:'HH:mm:ss' }}</span>
+    <span class="text-muted small">{{ alert.time | date:'hh:mm:ss a' }}</span>
   </div>
   <button class="btn btn-sm btn-outline-danger" (click)="acknowledgeAlert(i)" *ngIf="!alert.acknowledged">Acknowledge</button>
   <span class="badge bg-secondary" *ngIf="alert.acknowledged">Acknowledged</span>
@@ -208,7 +197,7 @@
               {{ o.junction_name ? 'AT JUNCTION' : 'MOVING' }}
             </span>
           </td>
-          <td class="text-muted" style="font-size:0.75rem">{{ o.time | date:'HH:mm' }}</td>
+          <td class="text-muted" style="font-size:0.75rem">{{ o.time | date:'hh:mm a' }}</td>
         </tr>
         <tr *ngIf="!liveOfficers.length">
           <td colspan="5" class="text-center text-muted py-3">No officers online</td>
@@ -232,8 +221,8 @@
             <div class="text-muted" style="font-size:0.7rem">{{ d.badge_number }}</div>
           </td>
           <td class="small">{{ d.short_name }}</td>
-          <td class="small">{{ d.check_in_time | date:'HH:mm' }}</td>
-          <td class="small text-muted">{{ d.check_out_time ? (d.check_out_time | date:'HH:mm') : '—' }}</td>
+          <td class="small">{{ d.check_in_time | date:'hh:mm a' }}</td>
+          <td class="small text-muted">{{ d.check_out_time ? (d.check_out_time | date:'hh:mm a') : '—' }}</td>
           <td class="fw-bold small" [class.text-success]="d.is_active">{{ formatDuration(d.duration_minutes) }}</td>
           <td>
             <span class="badge" [class.bg-success]="d.is_active" [class.bg-secondary]="!d.is_active">
