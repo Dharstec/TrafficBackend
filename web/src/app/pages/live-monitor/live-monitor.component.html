@@ -20,18 +20,7 @@
   </div>
 
   <div class="lm-header-meta">
-    <!-- Google free-tier usage — green → amber (80%) → red (95%) -->
-    <div class="lm-usage" *ngIf="usage"
-      [class.lm-usage-warn]="usagePercent >= 80" [class.lm-usage-danger]="usagePercent >= 95"
-      title="Google API calls used this month — free limit is protected automatically">
-      <i class="bi bi-shield-check"></i>
-      <div class="lm-usage-info">
-        <span class="lm-usage-text">{{ usage.calls }} / {{ usage.limit }} free</span>
-        <div class="lm-usage-bar"><div class="lm-usage-fill" [style.width.%]="usagePercent"></div></div>
-      </div>
-    </div>
-
-    <span class="lm-update-time"><i class="bi bi-clock"></i>{{ lastUpdate | date:'HH:mm:ss' }}</span>
+    <span class="lm-update-time"><i class="bi bi-clock"></i>{{ lastUpdate | date:'hh:mm:ss a' }}</span>
     <button type="button" class="lm-refresh-btn" (click)="refreshNow()" [disabled]="refreshing"
       title="Call Google API now — data updates only when you click this">
       <i class="bi bi-arrow-repeat" [class.lm-spinning]="refreshing"></i>
@@ -45,7 +34,7 @@
   <div class="lm-alert-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
   <div class="lm-alert-main">
     <div class="lm-alert-title">Heavy traffic at {{ alert.junction_name || alert.short_name }}</div>
-    <div class="lm-alert-sub">{{ alert.delay_minutes }} min delay · {{ alert.time | date:'HH:mm:ss' }}</div>
+    <div class="lm-alert-sub">{{ alert.delay_minutes }} min delay · {{ alert.time | date:'hh:mm:ss a' }}</div>
   </div>
   <button class="lm-alert-btn" (click)="acknowledgeAlert(i)" *ngIf="!alert.acknowledged">Acknowledge</button>
   <span class="lm-alert-done" *ngIf="alert.acknowledged"><i class="bi bi-check2"></i>Acknowledged</span>
@@ -257,7 +246,7 @@
               {{ o.junction_name ? 'At junction' : 'Moving' }}
             </span>
           </td>
-          <td class="lm-muted">{{ o.time | date:'HH:mm' }}</td>
+          <td class="lm-muted">{{ o.time | date:'hh:mm a' }}</td>
         </tr>
         <tr *ngIf="!liveOfficers.length">
           <td colspan="5" class="lm-empty-row">No officers online</td>
@@ -286,8 +275,8 @@
             </div>
           </td>
           <td>{{ d.short_name }}</td>
-          <td>{{ d.check_in_time | date:'HH:mm' }}</td>
-          <td class="lm-muted">{{ d.check_out_time ? (d.check_out_time | date:'HH:mm') : '—' }}</td>
+          <td>{{ d.check_in_time | date:'hh:mm a' }}</td>
+          <td class="lm-muted">{{ d.check_out_time ? (d.check_out_time | date:'hh:mm a') : '—' }}</td>
           <td class="fw-bold" [class.lm-delay-ok]="d.is_active">{{ formatDuration(d.duration_minutes) }}</td>
           <td>
             <span class="lm-badge" [class.lm-badge-green]="d.is_active" [class.lm-badge-grey]="!d.is_active">

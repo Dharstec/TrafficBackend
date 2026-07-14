@@ -14,16 +14,10 @@ export class TrafficService {
   }
 
   // Manual "Refresh Now" — the only way Google gets called (auto cron is
-  // off by default). Response includes updated monthly usage.
+  // off by default). Quota is enforced + logged backend-side only.
   refreshNow() {
     if (environment.useMockData) return of({ refreshed: true } as any);
     return this.http.post<any>(`${environment.apiUrl}/simulator/refresh`, {});
-  }
-
-  // Monthly Google free-tier usage { month, calls, limit, remaining }
-  getUsage() {
-    if (environment.useMockData) return of({ month: '', calls: 120, limit: 4500, remaining: 4380 });
-    return this.http.get<any>(`${environment.apiUrl}/simulator/usage`);
   }
 
   getByJunction(id: number, hours = 24) {
