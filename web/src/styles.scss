@@ -150,6 +150,17 @@ body.sidebar-collapsed .main-content {
   }
 }
 
+/* Traffic-line flow animation — Leaflet builds these SVG paths outside
+   Angular's view encapsulation, so the class must live globally. The thin
+   white dashes crawl along the road toward the junction. */
+.lm-flow-line {
+  animation: lm-traffic-flow 1.4s linear infinite;
+}
+
+@keyframes lm-traffic-flow {
+  to { stroke-dashoffset: -16; }
+}
+
 /* Junction name labels on web map */
 .junction-web-label {
   background: rgba(255, 255, 255, 0.95) !important;
