@@ -99,7 +99,7 @@ export class JunctionRoutesService {
         FROM route_traffic_data rtd
         JOIN junction_routes jr ON jr.id = rtd.route_id
         JOIN junctions j ON j.id = jr.junction_id
-        WHERE jr.is_active = true
+        WHERE jr.is_active = true AND j.is_active = true
         ORDER BY rtd.route_id, rtd.time DESC
       `);
       return res.rows;

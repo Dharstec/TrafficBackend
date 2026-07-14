@@ -156,7 +156,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getCongestionColor(level: string): string {
-    const m: any = { usual: '#4caf50', normal: '#ff9800', intermediate: '#f44336', heavy: '#7b1fa2' };
+    const m: any = { usual: '#4caf50', normal: '#ff9800', intermediate: '#f44336', heavy: '#795548' };
     return m[level] || '#9e9e9e';
   }
 
@@ -175,7 +175,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
         <div><span style="background:#4caf50;display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px"></span>Usual</div>
         <div><span style="background:#ff9800;display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px"></span>Normal</div>
         <div><span style="background:#f44336;display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px"></span>Intermediate</div>
-        <div><span style="background:#7b1fa2;display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px"></span>Heavy</div>
+        <div><span style="background:#795548;display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px"></span>Heavy</div>
         <hr class="my-1">
         <div><span style="background:#1976d2;display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px"></span>Officer</div>`;
       return div;

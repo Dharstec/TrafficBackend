@@ -74,7 +74,7 @@ body { background: #f0f2f5; font-family: 'Segoe UI', sans-serif; margin: 0; }
 .stat-card.green  { border-color: #4caf50; }
 .stat-card.orange { border-color: #ff9800; }
 .stat-card.red    { border-color: #f44336; }
-.stat-card.dark   { border-color: #7b1fa2; }
+.stat-card.dark   { border-color: #795548; }
 .stat-card.blue   { border-color: #1976d2; }
 
 .congestion-dot {
@@ -85,7 +85,7 @@ body { background: #f0f2f5; font-family: 'Segoe UI', sans-serif; margin: 0; }
 .dot-usual        { background: #4caf50; }
 .dot-normal       { background: #ff9800; }
 .dot-intermediate { background: #f44336; }
-.dot-heavy        { background: #7b1fa2; }
+.dot-heavy        { background: #795548; }
 
 .map-container { height: 500px; border-radius: 12px; overflow: hidden; }
 
@@ -106,7 +106,7 @@ body { background: #f0f2f5; font-family: 'Segoe UI', sans-serif; margin: 0; }
 .badge-usual        { background: #4caf50; color: #fff; }
 .badge-normal       { background: #ff9800; color: #fff; }
 .badge-intermediate { background: #f44336; color: #fff; }
-.badge-heavy        { background: #7b1fa2; color: #fff; }
+.badge-heavy        { background: #795548; color: #fff; }
 
 #map { height: 500px; }
 

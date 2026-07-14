@@ -20,7 +20,7 @@ export class TrafficService {
         FROM route_traffic_data rtd
         JOIN junction_routes jr ON jr.id = rtd.route_id
         JOIN junctions j ON j.id = jr.junction_id
-        WHERE jr.is_active = true
+        WHERE jr.is_active = true AND j.is_active = true
         ORDER BY rtd.route_id, rtd.time DESC
       `);
       return res.rows;
@@ -31,11 +31,14 @@ export class TrafficService {
   }
 
   async getLatest() {
+    // Deleted (deactivated) junctions must not appear on the live monitor,
+    // and neither should their old history rows.
     const res = await this.db.query(`
       SELECT DISTINCT ON (junction_id)
         td.*, j.name AS junction_name, j.lat, j.lng, j.district, j.sub_division, j.station
       FROM traffic_data td
       JOIN junctions j ON j.id = td.junction_id
+      WHERE j.is_active = true
       ORDER BY junction_id, time DESC
     `);
     return res.rows;
@@ -74,7 +77,7 @@ export class TrafficService {
          td.*, j.name AS junction_name, j.lat, j.lng
        FROM traffic_data td
        JOIN junctions j ON j.id = td.junction_id
-       WHERE td.time <= $1::timestamptz
+       WHERE td.time <= $1::timestamptz AND j.is_active = true
        ORDER BY junction_id, time DESC`,
       [ts],
     );
@@ -93,7 +96,7 @@ export class TrafficService {
               j.name AS junction_name
        FROM traffic_data td
        JOIN junctions j ON j.id=td.junction_id
-       WHERE time > NOW() - INTERVAL '7 days' ${filter}
+       WHERE time > NOW() - INTERVAL '7 days' AND j.is_active = true ${filter}
        GROUP BY junction_id, day, j.name
        ORDER BY day DESC, avg_delay DESC`,
       params,

@@ -36,7 +36,7 @@ export class TrafficService {
       usual: '#4caf50',
       normal: '#ff9800',
       intermediate: '#f44336',
-      heavy: '#7b1fa2',
+      heavy: '#795548',
     };
     return map[level] || '#9e9e9e';
   }
