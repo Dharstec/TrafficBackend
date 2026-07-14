@@ -4,7 +4,9 @@ import { OfficerService } from '../../core/services/officer.service';
 import { JunctionService } from '../../core/services/junction.service';
 import { SocketService } from '../../core/services/socket.service';
 import { JunctionRouteService } from '../../core/services/junction-route.service';
+import { UiService } from '../../core/services/ui.service';
 import { Subscription } from 'rxjs';
+import { skip } from 'rxjs/operators';
 import * as L from 'leaflet';
 
 @Component({
@@ -56,7 +58,11 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   mapReady = false;
   selectedJunctionId: number | null = null;
   panelCollapsed = false;
+  baseLayer: 'map' | 'satellite' = 'map';
   private map?: L.Map;
+  private osmLayer?: L.TileLayer;
+  private satLayer?: L.TileLayer;
+  private satLabels?: L.TileLayer;
   private junctionMarkers = new Map<number, L.Marker>();
   private junctionDataById = new Map<number, any>();
   private junctionNumberById = new Map<number, number>();
@@ -71,6 +77,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     private junctionSvc: JunctionService,
     private socket: SocketService,
     private routeSvc: JunctionRouteService,
+    private ui: UiService,
   ) {}
 
   ngOnInit() {
@@ -95,6 +102,11 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
         if (this.heavyAlerts.length > 20) this.heavyAlerts.pop();
       }),
       this.socket.trafficCleared$.subscribe(() => this.load()),
+      // Sidebar collapse changes the map container's width — re-measure
+      // Leaflet once the 0.25s CSS width transition has finished.
+      this.ui.sidebarCollapsed$.pipe(skip(1)).subscribe(() => {
+        setTimeout(() => this.map?.invalidateSize({ animate: true }), 280);
+      }),
     );
   }
 
@@ -132,6 +144,13 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
 
   loadTodayDuty() {
     this.officerSvc.getAllTodayDuty().subscribe(d => this.todayDuty = d);
+  }
+
+  // Map shell is [hidden] while other tabs are active — after re-showing,
+  // Leaflet must re-measure the container or tiles/pins render misaligned.
+  showMapTab() {
+    this.activeTab = 'map';
+    setTimeout(() => this.map?.invalidateSize(), 50);
   }
 
   acknowledgeAlert(i: number) { this.heavyAlerts[i].acknowledged = true; }
@@ -249,14 +268,28 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
 
   getColor(level: string) { return this.getCongestionColor(level); }
 
-  // ── Map: single Leaflet engine, standard OpenStreetMap basemap ────────
+  // ── Map: single Leaflet engine, switchable base layers ────────────────
+  // "Map" = OpenStreetMap (free). "Satellite" = Esri World Imagery + place
+  // labels (also free with attribution) — no Google Maps billing involved.
   initMap() {
     if (!this.leafletEl) return;
-    this.map = L.map(this.leafletEl.nativeElement).setView([11.0168, 76.9558], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    this.map = L.map(this.leafletEl.nativeElement, { zoomControl: false })
+      .setView([11.0168, 76.9558], 13);
+    L.control.zoom({ position: 'bottomright' }).addTo(this.map);
+
+    this.osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
       maxZoom: 19,
     }).addTo(this.map);
+
+    this.satLayer = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      { attribution: 'Esri, Maxar, Earthstar Geographics', maxZoom: 19 },
+    );
+    this.satLabels = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+      { attribution: 'Esri', maxZoom: 19 },
+    );
 
     this.mapReady = true;
 
@@ -266,6 +299,20 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
         : this.trafficData);
     }
     if (this.liveOfficers.length) this.renderOfficerMarkers(this.liveOfficers);
+  }
+
+  setBaseLayer(layer: 'map' | 'satellite') {
+    if (!this.map || layer === this.baseLayer) return;
+    this.baseLayer = layer;
+    if (layer === 'satellite') {
+      if (this.osmLayer) this.map.removeLayer(this.osmLayer);
+      this.satLayer?.addTo(this.map);
+      this.satLabels?.addTo(this.map);
+    } else {
+      if (this.satLayer) this.map.removeLayer(this.satLayer);
+      if (this.satLabels) this.map.removeLayer(this.satLabels);
+      this.osmLayer?.addTo(this.map);
+    }
   }
 
   // Stable per-junction display number (01, 02, 03…) — assigned once on

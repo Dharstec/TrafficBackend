@@ -57,6 +57,7 @@
   --color-heavy: #7b1fa2; // heavy
   --color-info: #1976d2; // officers / live
   --sidebar-width: 272px;
+  --sidebar-width-collapsed: 78px;
 
   // Typography
   --font-display: 'Manrope', 'Inter', sans-serif;
@@ -134,10 +135,17 @@ h1, h2, h3, h4, h5, h6 {
   margin-left: var(--sidebar-width);
   min-height: 100vh;
   padding: 28px 32px;
+  transition: margin-left 0.25s ease;
+}
+
+// Desktop sidebar collapsed → content stretches into the freed space
+body.sidebar-collapsed .main-content {
+  margin-left: var(--sidebar-width-collapsed);
 }
 
 @media (max-width: 991px) {
-  .main-content {
+  .main-content,
+  body.sidebar-collapsed .main-content {
     margin-left: 0;
   }
 }

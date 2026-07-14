@@ -1,36 +1,41 @@
-<div class="sidebar">
+<div class="sidebar" [class.collapsed]="ui.sidebarCollapsed">
+  <button class="collapse-btn" (click)="ui.toggleSidebar()"
+    [title]="ui.sidebarCollapsed ? 'Expand menu' : 'Collapse menu'">
+    <i class="bi" [class.bi-chevron-left]="!ui.sidebarCollapsed" [class.bi-chevron-right]="ui.sidebarCollapsed"></i>
+  </button>
+
   <div class="logo">
     <span class="logo-mark">
       <i class="bi bi-traffic-cone-fill"></i>
       <span class="logo-pulse"></span>
     </span>
-    <span class="logo-text">GCTP Monitor</span>
+    <span class="logo-text nav-text">GCTP Monitor</span>
   </div>
   <nav class="mt-2 flex-grow-1">
-    <p class="nav-section-label">Traffic Tools</p>
-    <a routerLink="/dashboard" routerLinkActive="active"><i class="bi bi-speedometer2"></i>Dashboard</a>
-    <a routerLink="/live-monitor" routerLinkActive="active"><i class="bi bi-broadcast"></i>Live Monitor</a>
-    <a routerLink="/map" routerLinkActive="active"><i class="bi bi-map"></i>City Map View</a>
+    <p class="nav-section-label nav-text">Traffic Tools</p>
+    <a routerLink="/dashboard" routerLinkActive="active" title="Dashboard"><i class="bi bi-speedometer2"></i><span class="nav-text">Dashboard</span></a>
+    <a routerLink="/live-monitor" routerLinkActive="active" title="Live Monitor"><i class="bi bi-broadcast"></i><span class="nav-text">Live Monitor</span></a>
+    <a routerLink="/map" routerLinkActive="active" title="City Map View"><i class="bi bi-map"></i><span class="nav-text">City Map View</span></a>
 
-    <p class="nav-section-label">Data Management</p>
-    <a routerLink="/junctions" routerLinkActive="active"><i class="bi bi-signpost-2"></i>Junctions</a>
-    <a routerLink="/officers" routerLinkActive="active"><i class="bi bi-person-badge"></i>Police Management</a>
+    <p class="nav-section-label nav-text">Data Management</p>
+    <a routerLink="/junctions" routerLinkActive="active" title="Junctions"><i class="bi bi-signpost-2"></i><span class="nav-text">Junctions</span></a>
+    <a routerLink="/officers" routerLinkActive="active" title="Police Management"><i class="bi bi-person-badge"></i><span class="nav-text">Police Management</span></a>
   </nav>
 
   <div class="sidebar-footer">
     <button class="theme-toggle" (click)="theme.toggle()" [title]="theme.isDark ? 'Switch to light' : 'Switch to dark'">
       <i class="bi" [class.bi-sun]="theme.isDark" [class.bi-moon-stars]="!theme.isDark"></i>
-      {{ theme.isDark ? 'Light mode' : 'Dark mode' }}
+      <span class="nav-text">{{ theme.isDark ? 'Light mode' : 'Dark mode' }}</span>
     </button>
     <div class="footer-user">
       <span class="footer-avatar">{{ auth.currentUser?.name?.charAt(0) }}</span>
-      <span class="footer-user-info">
+      <span class="footer-user-info nav-text">
         <span class="footer-name">{{ auth.currentUser?.name }}</span>
         <span class="footer-role">{{ auth.currentUser?.role | titlecase }}</span>
       </span>
     </div>
-    <a class="footer-logout" (click)="auth.logout()">
-      <i class="bi bi-box-arrow-left"></i>Logout
+    <a class="footer-logout" (click)="auth.logout()" title="Logout">
+      <i class="bi bi-box-arrow-left"></i><span class="nav-text">Logout</span>
     </a>
   </div>
 </div>

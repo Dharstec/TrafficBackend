@@ -21,6 +21,108 @@
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-lg);
+  transition: width 0.25s ease;
+}
+
+// ── Desktop collapse: icon-only rail ─────────────────────────────
+.collapse-btn {
+  position: absolute;
+  top: 30px;
+  right: -13px;
+  z-index: 110;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-solid);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+
+  &:hover {
+    background: var(--gradient-primary);
+    color: #fff;
+    transform: scale(1.08);
+  }
+}
+
+.sidebar.collapsed {
+  width: var(--sidebar-width-collapsed);
+
+  .nav-text {
+    display: none;
+  }
+
+  .logo {
+    justify-content: center;
+    padding: 24px 10px;
+  }
+
+  nav a {
+    justify-content: center;
+    padding: 12px 0;
+    margin: 4px 12px;
+
+    i { width: auto; }
+
+    &:hover { transform: none; }
+  }
+
+  // Keep rhythm where the section labels were
+  .nav-section-label + a { margin-top: 14px; }
+
+  .sidebar-footer {
+    padding: 14px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .theme-toggle {
+    width: 40px;
+    height: 40px;
+    justify-content: center;
+    padding: 0;
+    margin-bottom: 0;
+    border-radius: 50%;
+
+    i { font-size: 1rem; }
+  }
+
+  .footer-user { margin-bottom: 0; }
+
+  .footer-logout {
+    width: 40px;
+    height: 40px;
+    justify-content: center;
+    border-radius: 50%;
+
+    &:hover { background: rgba(v.$color-danger, 0.1); }
+  }
+}
+
+@media (max-width: 991px) {
+  // Mobile uses the drawer toggle — the desktop collapse rail is hidden
+  // and the sidebar always renders full width inside the drawer.
+  .collapse-btn { display: none; }
+
+  .sidebar.collapsed {
+    width: var(--sidebar-width);
+
+    .nav-text { display: inline; }
+    .logo { justify-content: flex-start; padding: 24px 20px; }
+    nav a { justify-content: flex-start; padding: 10px 16px; margin: 2px 14px; }
+    .sidebar-footer { display: block; padding: 18px 20px; }
+    .theme-toggle { width: 100%; height: auto; justify-content: flex-start; padding: 9px 14px; border-radius: var(--radius-sm); margin-bottom: 16px; }
+    .footer-user { margin-bottom: 14px; }
+    .footer-logout { width: auto; height: auto; justify-content: flex-start; border-radius: 0; }
+  }
 }
 
 .logo {

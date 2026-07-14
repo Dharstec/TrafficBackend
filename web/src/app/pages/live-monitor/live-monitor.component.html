@@ -1,41 +1,46 @@
-<ng-container *ngIf="false">
-<div class="topbar">
-  <h5 class="mb-0 fw-bold"><i class="bi bi-broadcast me-2 text-danger"></i>Traffic Live Monitor</h5>
-  <span class="text-muted small">Last update: {{ lastUpdate | date:'HH:mm:ss' }}</span>
-</div>
-
-<!-- Heavy Traffic Alerts + Tabs: hidden for the map-focused layout (kept in
-     markup/component untouched, not redesigned — just not shown). -->
-
-  <div *ngFor="let alert of heavyAlerts; let i=index" class="lm-alert" [class.lm-alert-ack]="alert.acknowledged">
-    <div class="lm-alert-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
-    <div class="lm-alert-main">
-      <div class="lm-alert-title">Heavy traffic at {{ alert.junction_name || alert.short_name }}</div>
-      <div class="lm-alert-sub">{{ alert.delay_minutes }} min delay · {{ alert.time | date:'HH:mm:ss' }}</div>
-    </div>
-    <button class="lm-alert-btn" (click)="acknowledgeAlert(i)" *ngIf="!alert.acknowledged">Acknowledge</button>
-    <span class="lm-alert-done" *ngIf="alert.acknowledged"><i class="bi bi-check2"></i>Acknowledged</span>
+<!-- Header: title + tabs together in one compact row -->
+<div class="lm-header">
+  <div class="lm-header-title">
+    <span class="lm-live-dot"></span>
+    <h5>Traffic Live Monitor</h5>
   </div>
 
   <div class="lm-tabbar">
-    <button class="lm-tab" [class.active]="activeTab==='map'" (click)="activeTab='map'">
-      <i class="bi bi-map"></i>Live Map
+    <button class="lm-tab" [class.active]="activeTab==='map'" (click)="showMapTab()">
+      <i class="bi bi-map"></i><span class="lm-tab-label">Live Map</span>
     </button>
     <button class="lm-tab" [class.active]="activeTab==='officers'" (click)="activeTab='officers'">
-      <i class="bi bi-person-badge"></i>Live Officers
+      <i class="bi bi-person-badge"></i><span class="lm-tab-label">Live Officers</span>
       <span class="lm-tab-count">{{ liveOfficers.length }}</span>
     </button>
     <button class="lm-tab" [class.active]="activeTab==='duty'" (click)="activeTab='duty';loadTodayDuty()">
-      <i class="bi bi-clock-history"></i>Today's Duty
+      <i class="bi bi-clock-history"></i><span class="lm-tab-label">Today's Duty</span>
       <span class="lm-tab-count">{{ todayDuty.length }}</span>
     </button>
   </div>
-</ng-container>
+
+  <div class="lm-header-meta">
+    <i class="bi bi-arrow-repeat"></i>
+    <span>{{ lastUpdate | date:'HH:mm:ss' }}</span>
+  </div>
+</div>
+
+<!-- Heavy Traffic Alerts -->
+<div *ngFor="let alert of heavyAlerts; let i=index" class="lm-alert" [class.lm-alert-ack]="alert.acknowledged">
+  <div class="lm-alert-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
+  <div class="lm-alert-main">
+    <div class="lm-alert-title">Heavy traffic at {{ alert.junction_name || alert.short_name }}</div>
+    <div class="lm-alert-sub">{{ alert.delay_minutes }} min delay · {{ alert.time | date:'HH:mm:ss' }}</div>
+  </div>
+  <button class="lm-alert-btn" (click)="acknowledgeAlert(i)" *ngIf="!alert.acknowledged">Acknowledge</button>
+  <span class="lm-alert-done" *ngIf="alert.acknowledged"><i class="bi bi-check2"></i>Acknowledged</span>
+</div>
 
 <!-- Live Map Tab: map-first command center — floating Google-Maps-style
      filter chips over a near-fullscreen Leaflet map, results list floating
-     on the right. -->
-<div *ngIf="activeTab==='map'" class="lm-map-shell">
+     on the right. [hidden] (not *ngIf) so the Leaflet instance survives
+     tab switches — destroying the container would leave a dead map. -->
+<div [hidden]="activeTab!=='map'" class="lm-map-shell">
 
   <!-- Floating filter chips -->
   <div class="lm-chipbar">
@@ -100,6 +105,18 @@
   <!-- Map -->
   <div class="lm-map">
     <div #leafletEl class="lm-leaflet-el"></div>
+
+    <!-- Google-Maps-style layer switcher -->
+    <div class="lm-layers" *ngIf="mapReady">
+      <button type="button" class="lm-layer-btn" [class.active]="baseLayer==='map'" (click)="setBaseLayer('map')" title="Default map">
+        <span class="lm-layer-thumb lm-thumb-map"><i class="bi bi-map-fill"></i></span>
+        <span class="lm-layer-name">Map</span>
+      </button>
+      <button type="button" class="lm-layer-btn" [class.active]="baseLayer==='satellite'" (click)="setBaseLayer('satellite')" title="Satellite imagery">
+        <span class="lm-layer-thumb lm-thumb-sat"><i class="bi bi-globe-americas"></i></span>
+        <span class="lm-layer-name">Satellite</span>
+      </button>
+    </div>
 
     <!-- Legend -->
     <div class="lm-legend" *ngIf="mapReady">

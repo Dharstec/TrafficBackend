@@ -13,9 +13,57 @@
   font-family: var(--font-body);
 }
 
-.topbar {
-  @include m.topbar;
+// ── Header row: live dot + title, tabs beside it, last-update right ──
+.lm-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
   margin-bottom: 12px;
+}
+
+.lm-header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  h5 {
+    margin: 0;
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--g-text);
+    white-space: nowrap;
+  }
+}
+
+.lm-live-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: v.$color-danger;
+  flex: 0 0 auto;
+  animation: lm-live-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes lm-live-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(v.$color-danger, 0.45); }
+  50% { box-shadow: 0 0 0 6px rgba(v.$color-danger, 0); }
+}
+
+.lm-header-meta {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--g-text-secondary);
+  white-space: nowrap;
+
+  i { animation: lm-spin 3s linear infinite; }
+}
+
+@keyframes lm-spin {
+  to { transform: rotate(360deg); }
 }
 
 // ── Heavy traffic alerts ────────────────────────────────────────
@@ -93,7 +141,7 @@
   gap: 4px;
 }
 
-// ── Tab bar ─────────────────────────────────────────────────────
+// ── Tab bar (sits inside the header, next to the title) ─────────
 .lm-tabbar {
   display: inline-flex;
   gap: 4px;
@@ -101,7 +149,6 @@
   background: var(--color-surface-solid);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
-  margin-bottom: 16px;
 }
 
 .lm-tab {
@@ -236,16 +283,20 @@
   padding: 40px;
 }
 
-// ── Map-first shell — map fills almost the entire page now that the
-// alerts/tabs strip above it is hidden. ────────────────────────────
+// ── Map-first shell — fills the viewport below the header row. ────
 .lm-map-shell {
   position: relative;
-  height: calc(100vh - 56px);
-  min-height: 560px;
+  height: calc(100vh - 128px);
+  min-height: 520px;
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-md);
   background: var(--color-surface-alt);
+
+  // [hidden] keeps the Leaflet instance alive across tab switches; the
+  // mobile media query below sets display:flex, which would beat the UA's
+  // [hidden] rule without this.
+  &[hidden] { display: none !important; }
 }
 
 .lm-map {
@@ -402,6 +453,81 @@
 @keyframes lm-chip-pop {
   from { opacity: 0; transform: translateY(-4px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+// ── Layer switcher (Map / Satellite) — Google-Maps-style thumbs,
+// bottom-right above the zoom control. ─────────────────────────────
+.lm-layers {
+  position: absolute;
+  right: 12px;
+  bottom: 112px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lm-layer-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+
+  &:hover .lm-layer-thumb {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+
+  &.active {
+    .lm-layer-thumb {
+      border-color: var(--g-blue);
+      box-shadow: 0 0 0 2px rgba(var(--rgb-primary), 0.35), var(--shadow-md);
+    }
+    .lm-layer-name {
+      color: var(--g-blue-dark);
+      font-weight: 700;
+    }
+  }
+}
+
+.lm-layer-thumb {
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.lm-thumb-map {
+  background: linear-gradient(135deg, #a8d5a2 0%, #e8e0c9 45%, #9ec9e8 100%);
+  color: #33691e;
+}
+
+.lm-thumb-sat {
+  background: linear-gradient(135deg, #1b2f23 0%, #3e5641 50%, #24455e 100%);
+  color: #d7e8d0;
+}
+
+.lm-layer-name {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--g-text);
+  background: rgba(var(--rgb-surface), 0.8);
+  backdrop-filter: blur(8px);
+  padding: 1px 7px;
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+  transition: color 0.15s ease;
 }
 
 // ── Legend ─────────────────────────────────────────────────────
