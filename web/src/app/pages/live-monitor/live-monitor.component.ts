@@ -373,9 +373,12 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
       zoomControl: false,
       maxBounds: chennai,
       maxBoundsViscosity: 1.0, // hard wall — no dragging outside the city
-      minZoom: 10,
-    }).setView([13.0475, 80.2090], 12);
+    }).fitBounds(chennai);
     L.control.zoom({ position: 'bottomright' }).addTo(this.map);
+
+    // Zoom-out limit = Chennai exactly filling the screen. One more zoom-out
+    // step is impossible — the full-city view IS the widest view.
+    this.map.setMinZoom(this.map.getBoundsZoom(chennai));
 
     this.baseLayers = {
       map: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -576,13 +579,12 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
 
-    // Fit the view once on first render; later refreshes keep the user's view.
-    // Also re-lock the pan limits to the junctions' own city area, so the
-    // map can never wander off to other districts or the world map.
+    // Fit the view once on first render; later refreshes keep the user's
+    // view. Pan/zoom limits stay city-wide: zoom-out floor is the full
+    // Chennai view set in initMap.
     if (data.length > 0 && !this.didFitBounds) {
       const bounds = L.latLngBounds(data.map(d => [d.lat, d.lng] as [number, number]));
       this.map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
-      this.map.setMaxBounds(bounds.pad(1.5));
       this.didFitBounds = true;
     }
 
