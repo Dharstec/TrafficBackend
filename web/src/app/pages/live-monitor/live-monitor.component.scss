@@ -66,6 +66,58 @@
   color: var(--g-text-secondary);
 }
 
+// Google free-tier usage chip — quota guard status at a glance
+.lm-usage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(v.$color-success, 0.12);
+  color: darken(#4caf50, 14%);
+  border-radius: 10px;
+  padding: 5px 12px;
+
+  i { font-size: 0.95rem; }
+
+  &.lm-usage-warn {
+    background: rgba(v.$color-warning, 0.14);
+    color: #b26a00;
+    .lm-usage-fill { background: v.$color-warning; }
+  }
+
+  &.lm-usage-danger {
+    background: rgba(v.$color-danger, 0.12);
+    color: v.$color-danger;
+    .lm-usage-fill { background: v.$color-danger; }
+  }
+}
+
+.lm-usage-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.lm-usage-text {
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.lm-usage-bar {
+  width: 96px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.lm-usage-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: v.$color-success;
+  transition: width 0.4s ease;
+}
+
 // "Refresh Now" — manually triggers the backend's Google API pass
 .lm-refresh-btn {
   display: inline-flex;

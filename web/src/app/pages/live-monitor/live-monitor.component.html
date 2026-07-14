@@ -20,9 +20,20 @@
   </div>
 
   <div class="lm-header-meta">
+    <!-- Google free-tier usage — green → amber (80%) → red (95%) -->
+    <div class="lm-usage" *ngIf="usage"
+      [class.lm-usage-warn]="usagePercent >= 80" [class.lm-usage-danger]="usagePercent >= 95"
+      title="Google API calls used this month — free limit is protected automatically">
+      <i class="bi bi-shield-check"></i>
+      <div class="lm-usage-info">
+        <span class="lm-usage-text">{{ usage.calls }} / {{ usage.limit }} free</span>
+        <div class="lm-usage-bar"><div class="lm-usage-fill" [style.width.%]="usagePercent"></div></div>
+      </div>
+    </div>
+
     <span class="lm-update-time"><i class="bi bi-clock"></i>{{ lastUpdate | date:'HH:mm:ss' }}</span>
     <button type="button" class="lm-refresh-btn" (click)="refreshNow()" [disabled]="refreshing"
-      title="Fetch fresh Google traffic data now (auto-updates every 5 min)">
+      title="Call Google API now — data updates only when you click this">
       <i class="bi bi-arrow-repeat" [class.lm-spinning]="refreshing"></i>
       {{ refreshing ? 'Refreshing…' : 'Refresh Now' }}
     </button>

@@ -33,7 +33,10 @@ export class AppModule implements OnModuleInit {
   constructor(private simulator: SimulatorService) {}
 
   async onModuleInit() {
-    // Seed initial traffic data on startup
-    setTimeout(() => this.simulator.runOnce(), 3000);
+    // Startup seed only in auto mode — in button-only mode every PM2
+    // restart would otherwise silently burn Google API quota.
+    if (process.env.AUTO_REFRESH === 'true') {
+      setTimeout(() => this.simulator.runOnce(), 3000);
+    }
   }
 }

@@ -27,6 +27,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   activeTab: 'map' | 'officers' | 'duty' = 'map';
   lastUpdate = new Date();
   refreshing = false;
+  usage: any = null; // Google free-tier usage { calls, limit, remaining }
 
   // Filters for each panel
   searchFreeFlow = '';
@@ -82,6 +83,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit() {
     this.load();
+    this.loadUsage();
     this.loadJunctionMeta();
     this.subs.push(
       this.socket.trafficUpdates$.subscribe(updates => {
@@ -157,18 +159,31 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Manual Google API refresh — backend runs its full pass (one Directions
   // call per route), then we re-pull the tables. WebSocket pushes update the
-  // pins live while it runs.
+  // pins live while it runs. This button is what spends the free quota.
   refreshNow() {
     if (this.refreshing) return;
     this.refreshing = true;
     this.trafficSvc.refreshNow().subscribe({
-      next: () => {
+      next: (res: any) => {
+        if (res?.usage) this.usage = res.usage;
         this.load();
         this.lastUpdate = new Date();
         this.refreshing = false;
       },
       error: () => { this.refreshing = false; },
     });
+  }
+
+  loadUsage() {
+    this.trafficSvc.getUsage().subscribe({
+      next: u => this.usage = u,
+      error: () => {}, // endpoint not deployed yet — badge stays hidden
+    });
+  }
+
+  get usagePercent(): number {
+    if (!this.usage?.limit) return 0;
+    return Math.min(100, Math.round((this.usage.calls / this.usage.limit) * 100));
   }
 
   // Delay from Free Flow — sorted by highest delay, routes preferred

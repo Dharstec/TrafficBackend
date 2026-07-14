@@ -13,11 +13,17 @@ export class TrafficService {
     return this.http.get<any[]>(`${environment.apiUrl}/traffic/latest`);
   }
 
-  // Manual "Refresh Now" — asks the backend to run its Google API pass
-  // immediately instead of waiting for the next 5-minute cron tick.
+  // Manual "Refresh Now" — the only way Google gets called (auto cron is
+  // off by default). Response includes updated monthly usage.
   refreshNow() {
-    if (environment.useMockData) return of({ refreshed: true });
-    return this.http.post<{ refreshed: boolean }>(`${environment.apiUrl}/simulator/refresh`, {});
+    if (environment.useMockData) return of({ refreshed: true } as any);
+    return this.http.post<any>(`${environment.apiUrl}/simulator/refresh`, {});
+  }
+
+  // Monthly Google free-tier usage { month, calls, limit, remaining }
+  getUsage() {
+    if (environment.useMockData) return of({ month: '', calls: 120, limit: 4500, remaining: 4380 });
+    return this.http.get<any>(`${environment.apiUrl}/simulator/usage`);
   }
 
   getByJunction(id: number, hours = 24) {
