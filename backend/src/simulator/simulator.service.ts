@@ -85,7 +85,7 @@ export class SimulatorService {
   ): Promise<{
     delay: number; usualDelay: number;
     totalSeconds: number; usualSeconds: number; freeFlowSeconds: number;
-    source: string;
+    source: string; polyline?: string | null;
   }> {
     const googleKey = process.env.GOOGLE_MAPS_API_KEY;
     // googleAllowed is set per run: key present AND monthly free quota left
@@ -127,8 +127,12 @@ export class SimulatorService {
         usualDelay = Math.round((Math.max(0, totalSeconds - usualSeconds) / 60) * 10) / 10;
       }
 
+      // Encoded road shape — the dashboard draws the traffic-colored line
+      // along the real road with it (Google Maps traffic-view style).
+      const polyline: string | null = curRes.routes[0].overview_polyline?.points ?? null;
+
       this.log.log(`[Google] ${originLat},${originLng}→${destLat},${destLng} total=${totalSeconds}s usual=${usualSeconds}s delay=${delay}m usualDelay=${usualDelay}m`);
-      return { delay, usualDelay, totalSeconds, usualSeconds, freeFlowSeconds, source: 'google' };
+      return { delay, usualDelay, totalSeconds, usualSeconds, freeFlowSeconds, source: 'google', polyline };
     } catch (e: any) {
       this.log.error(`[Google] Fetch error: ${e.message}`);
       return { delay: this.fallbackDelay(), usualDelay: 0, totalSeconds: 0, usualSeconds: 0, freeFlowSeconds: 0, source: 'simulator' };
@@ -214,7 +218,7 @@ export class SimulatorService {
       const updates: any[] = [];
 
       for (const r of routes) {
-        const { delay, usualDelay, totalSeconds, usualSeconds, freeFlowSeconds, source } =
+        const { delay, usualDelay, totalSeconds, usualSeconds, freeFlowSeconds, source, polyline } =
           await this.fetchRouteTraffic(+r.origin_lat, +r.origin_lng, +r.dest_lat, +r.dest_lng);
 
         const level = this.getLevel(delay);
@@ -226,6 +230,16 @@ export class SimulatorService {
            VALUES (NOW(),$1,$2,$3,$4,$5,$6,$7,$8,$9)`,
           [r.id, r.junction_id, delay, usualDelay, totalSeconds, usualSeconds, freeFlowSeconds, level, source],
         );
+
+        // Remember the road shape on the route itself — it barely changes,
+        // and the map draws the colored traffic line with it.
+        if (polyline) {
+          try {
+            await this.db.query('UPDATE junction_routes SET polyline=$1 WHERE id=$2', [polyline, r.id]);
+          } catch (e: any) {
+            if (e.code !== '42703') throw e; // column not migrated yet — skip quietly
+          }
+        }
 
         const update = {
           route_id: r.id,
@@ -240,6 +254,7 @@ export class SimulatorService {
           usual_seconds: usualSeconds,
           congestion_level: level,
           source,
+          polyline: polyline ?? r.polyline ?? null,
           time: new Date(),
         };
         updates.push(update);

@@ -72,6 +72,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   private junctionNumberById = new Map<number, number>();
   private nextJunctionNumber = 1;
   private officerMarkers = new Map<number, L.Marker>();
+  private routeLines = new Map<number, L.Polyline>();
 
   private subs: Subscription[] = [];
 
@@ -105,7 +106,10 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
             this.updateJunctionPin(u);
           }
         });
-        if (routeChanged) this.renderJunctionPins(this.pinSourceData);
+        if (routeChanged) {
+          this.renderJunctionPins(this.pinSourceData);
+          this.renderRouteLines(this.routeTrafficData);
+        }
         this.touchLastUpdate(updates);
       }),
       this.socket.officerLocations$.subscribe(loc => {
@@ -143,7 +147,10 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     this.routeSvc.getLatestTraffic().subscribe(data => {
       this.routeTrafficData = data;
       this.touchLastUpdate(data);
-      if (data.length > 0) this.renderJunctionPins(this.pinSourceData);
+      if (data.length > 0) {
+        this.renderJunctionPins(this.pinSourceData);
+        this.renderRouteLines(data);
+      }
     });
     this.officerSvc.getLiveLocations().subscribe(data => {
       this.liveOfficers = data;
@@ -337,6 +344,13 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
       if (shouldShow && !onMap) marker.addTo(this.map!);
       if (!shouldShow && onMap) this.map!.removeLayer(marker);
     });
+    // Traffic lines follow their junction's visibility
+    this.routeLines.forEach(line => {
+      const shouldShow = visibleIds.has((line as any)._junctionId);
+      const onMap = this.map!.hasLayer(line);
+      if (shouldShow && !onMap) line.addTo(this.map!);
+      if (!shouldShow && onMap) this.map!.removeLayer(line);
+    });
   }
 
   officerForRow(d: any): string {
@@ -414,6 +428,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     this.mapReady = true;
 
     if (this.displayData.length) this.renderJunctionPins(this.pinSourceData);
+    if (this.hasRoutes) this.renderRouteLines(this.routeTrafficData);
     if (this.liveOfficers.length) this.renderOfficerMarkers(this.liveOfficers);
   }
 
@@ -659,6 +674,78 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
         Status: <b style="color:${color}">${(d.congestion_level || '').toUpperCase()}</b>
       </div>
     `;
+  }
+
+  // ── Traffic lines along the real roads (Google-Maps traffic style) ──
+  // Google's encoded polyline → list of lat/lng points. Standard algorithm,
+  // no library needed.
+  private decodePolyline(encoded: string): [number, number][] {
+    const pts: [number, number][] = [];
+    let index = 0, lat = 0, lng = 0;
+    while (index < encoded.length) {
+      let b, shift = 0, result = 0;
+      do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+      lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+      shift = 0; result = 0;
+      do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+      lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+      pts.push([lat / 1e5, lng / 1e5]);
+    }
+    return pts;
+  }
+
+  // Draws every route as a colored line using the same congestion palette
+  // as the pins. Real road shape when Google's polyline is stored; dashed
+  // straight line as a fallback until the first Google refresh saves one.
+  private renderRouteLines(rows: any[]) {
+    if (!this.map) return;
+    const live = new Set<number>();
+
+    rows.forEach(r => {
+      const id = r.route_id ?? r.id;
+      if (id == null) return;
+      live.add(id);
+
+      let path: [number, number][] | null = null;
+      if (r.polyline) path = this.decodePolyline(r.polyline);
+      else if (r.origin_lat != null && r.dest_lat != null) {
+        path = [[+r.origin_lat, +r.origin_lng], [+r.dest_lat, +r.dest_lng]];
+      }
+      if (!path || path.length < 2) return;
+
+      const color = this.getCongestionColor(r.congestion_level);
+      const style: L.PolylineOptions = {
+        color,
+        weight: 6,
+        opacity: 0.8,
+        lineCap: 'round',
+        dashArray: r.polyline ? undefined : '6 10',
+      };
+      const tip = `${r.coming_from || r.junction_name} — ${r.delay_minutes}m delay (${r.congestion_level})`;
+
+      const existing = this.routeLines.get(id);
+      if (existing) {
+        existing.setLatLngs(path);
+        existing.setStyle(style);
+        existing.setTooltipContent(tip);
+      } else {
+        const line = L.polyline(path, style).addTo(this.map!);
+        line.bindTooltip(tip, { sticky: true });
+        (line as any)._junctionId = r.junction_id;
+        line.on('click', () => this.selectJunction(this.junctionDataById.get(r.junction_id) || r));
+        this.routeLines.set(id, line);
+      }
+    });
+
+    // Remove lines for routes that no longer exist
+    this.routeLines.forEach((line, id) => {
+      if (!live.has(id)) {
+        this.map!.removeLayer(line);
+        this.routeLines.delete(id);
+      }
+    });
+
+    this.applyChipFilters();
   }
 
   renderOfficerMarkers(officers: any[]) {
