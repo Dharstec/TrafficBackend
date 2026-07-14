@@ -54,12 +54,47 @@
   margin-left: auto;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.lm-update-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 0.75rem;
   color: var(--g-text-secondary);
-  white-space: nowrap;
+}
 
-  i { animation: lm-spin 3s linear infinite; }
+// "Refresh Now" — manually triggers the backend's Google API pass
+.lm-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: none;
+  background: var(--gradient-primary);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 18px;
+  cursor: pointer;
+  box-shadow: var(--shadow-glow-primary);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+
+  &:hover:not(:disabled) { transform: translateY(-1px); }
+  &:active:not(:disabled) { transform: translateY(0); }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: wait;
+  }
+
+  i { font-size: 0.85rem; }
+}
+
+.lm-spinning {
+  animation: lm-spin 0.9s linear infinite;
 }
 
 @keyframes lm-spin {
@@ -283,14 +318,14 @@
   padding: 40px;
 }
 
-// ── Map-first shell — fills the viewport below the header row. ────
+// ── Map-first shell — full view, no box: bleeds past .main-content's
+// 28px/32px padding to touch the sidebar and viewport edges. ────────
 .lm-map-shell {
   position: relative;
-  height: calc(100vh - 128px);
+  height: calc(100vh - 86px);
   min-height: 520px;
-  border-radius: var(--radius-lg);
+  margin: 0 -32px -28px;
   overflow: hidden;
-  box-shadow: var(--shadow-md);
   background: var(--color-surface-alt);
 
   // [hidden] keeps the Leaflet instance alive across tab switches; the
@@ -825,6 +860,7 @@
   .lm-map-shell {
     height: auto;
     min-height: 0;
+    margin: 0;
     overflow: visible;
     box-shadow: none;
     background: transparent;

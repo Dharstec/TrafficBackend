@@ -13,6 +13,13 @@ export class TrafficService {
     return this.http.get<any[]>(`${environment.apiUrl}/traffic/latest`);
   }
 
+  // Manual "Refresh Now" — asks the backend to run its Google API pass
+  // immediately instead of waiting for the next 5-minute cron tick.
+  refreshNow() {
+    if (environment.useMockData) return of({ refreshed: true });
+    return this.http.post<{ refreshed: boolean }>(`${environment.apiUrl}/simulator/refresh`, {});
+  }
+
   getByJunction(id: number, hours = 24) {
     if (environment.useMockData) {
       return of(MOCK_TRAFFIC_LATEST.filter(d => d.junction_id === id));

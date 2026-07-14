@@ -20,8 +20,12 @@
   </div>
 
   <div class="lm-header-meta">
-    <i class="bi bi-arrow-repeat"></i>
-    <span>{{ lastUpdate | date:'HH:mm:ss' }}</span>
+    <span class="lm-update-time"><i class="bi bi-clock"></i>{{ lastUpdate | date:'HH:mm:ss' }}</span>
+    <button type="button" class="lm-refresh-btn" (click)="refreshNow()" [disabled]="refreshing"
+      title="Fetch fresh Google traffic data now (auto-updates every 5 min)">
+      <i class="bi bi-arrow-repeat" [class.lm-spinning]="refreshing"></i>
+      {{ refreshing ? 'Refreshing…' : 'Refresh Now' }}
+    </button>
   </div>
 </div>
 

@@ -26,6 +26,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   get displayData() { return this.hasRoutes ? this.routeTrafficData : this.trafficData; }
   activeTab: 'map' | 'officers' | 'duty' = 'map';
   lastUpdate = new Date();
+  refreshing = false;
 
   // Filters for each panel
   searchFreeFlow = '';
@@ -154,6 +155,22 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   acknowledgeAlert(i: number) { this.heavyAlerts[i].acknowledged = true; }
+
+  // Manual Google API refresh — backend runs its full pass (one Directions
+  // call per route), then we re-pull the tables. WebSocket pushes update the
+  // pins live while it runs.
+  refreshNow() {
+    if (this.refreshing) return;
+    this.refreshing = true;
+    this.trafficSvc.refreshNow().subscribe({
+      next: () => {
+        this.load();
+        this.lastUpdate = new Date();
+        this.refreshing = false;
+      },
+      error: () => { this.refreshing = false; },
+    });
+  }
 
   // Delay from Free Flow — sorted by highest delay, routes preferred
   get freeFlowTraffic() {
