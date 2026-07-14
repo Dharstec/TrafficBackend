@@ -78,40 +78,35 @@ export class SimulatorService {
     }
   }
 
-  // Fetch current + usual traffic for a specific origin→destination route
+  // Fetch CURRENT traffic only — ONE Google call per route. "Usual" is no
+  // longer a second paid call: it's computed from our own stored history
+  // (see usualFromHistory), which costs nothing.
   private async fetchRouteTraffic(
     originLat: number, originLng: number,
     destLat: number, destLng: number,
   ): Promise<{
-    delay: number; usualDelay: number;
-    totalSeconds: number; usualSeconds: number; freeFlowSeconds: number;
+    delay: number; totalSeconds: number; freeFlowSeconds: number;
     source: string; polyline?: string | null;
   }> {
     const googleKey = process.env.GOOGLE_MAPS_API_KEY;
     // googleAllowed is set per run: key present AND monthly free quota left
     if (!googleKey || !this.googleAllowed) {
       const delay = this.fallbackDelay();
-      return { delay, usualDelay: 0, totalSeconds: 0, usualSeconds: 0, freeFlowSeconds: 0, source: 'simulator' };
+      return { delay, totalSeconds: 0, freeFlowSeconds: 0, source: 'simulator' };
     }
 
-    const base = `https://maps.googleapis.com/maps/api/directions/json` +
+    const url = `https://maps.googleapis.com/maps/api/directions/json` +
       `?origin=${originLat},${originLng}&destination=${destLat},${destLng}` +
-      `&traffic_model=best_guess&key=${googleKey}`;
-
-    const nextWeekTs = Math.floor((Date.now() + 7 * 24 * 3600 * 1000) / 1000);
+      `&traffic_model=best_guess&departure_time=now&key=${googleKey}`;
 
     try {
-      const [curRes, usualRes] = await Promise.all([
-        fetch(`${base}&departure_time=now`).then(r => r.json()),
-        fetch(`${base}&departure_time=${nextWeekTs}`).then(r => r.json()),
-      ]);
+      const curRes = await fetch(url).then(r => r.json());
 
       this.logGoogleResponse('LIVE', curRes);
-      this.logGoogleResponse('USUAL', usualRes);
 
       if (curRes.status !== 'OK') {
         this.log.error(`[Google] ${curRes.status}: ${curRes.error_message || ''}`);
-        return { delay: this.fallbackDelay(), usualDelay: 0, totalSeconds: 0, usualSeconds: 0, freeFlowSeconds: 0, source: 'simulator' };
+        return { delay: this.fallbackDelay(), totalSeconds: 0, freeFlowSeconds: 0, source: 'simulator' };
       }
 
       const leg = curRes.routes[0].legs[0];
@@ -119,23 +114,55 @@ export class SimulatorService {
       const totalSeconds: number = leg.duration_in_traffic?.value ?? freeFlowSeconds;
       const delay = Math.round((Math.max(0, totalSeconds - freeFlowSeconds) / 60) * 10) / 10;
 
-      let usualSeconds = totalSeconds;
-      let usualDelay = 0;
-      if (usualRes.status === 'OK') {
-        const uLeg = usualRes.routes[0].legs[0];
-        usualSeconds = uLeg.duration_in_traffic?.value ?? uLeg.duration?.value ?? totalSeconds;
-        usualDelay = Math.round((Math.max(0, totalSeconds - usualSeconds) / 60) * 10) / 10;
-      }
-
       // Encoded road shape — the dashboard draws the traffic-colored line
       // along the real road with it (Google Maps traffic-view style).
       const polyline: string | null = curRes.routes[0].overview_polyline?.points ?? null;
 
-      this.log.log(`[Google] ${originLat},${originLng}→${destLat},${destLng} total=${totalSeconds}s usual=${usualSeconds}s delay=${delay}m usualDelay=${usualDelay}m`);
-      return { delay, usualDelay, totalSeconds, usualSeconds, freeFlowSeconds, source: 'google', polyline };
+      this.log.log(`[Google] ${originLat},${originLng}→${destLat},${destLng} total=${totalSeconds}s delay=${delay}m (1 call)`);
+      return { delay, totalSeconds, freeFlowSeconds, source: 'google', polyline };
     } catch (e: any) {
       this.log.error(`[Google] Fetch error: ${e.message}`);
-      return { delay: this.fallbackDelay(), usualDelay: 0, totalSeconds: 0, usualSeconds: 0, freeFlowSeconds: 0, source: 'simulator' };
+      return { delay: this.fallbackDelay(), totalSeconds: 0, freeFlowSeconds: 0, source: 'simulator' };
+    }
+  }
+
+  // "Usual" travel time from OUR OWN history — zero Google cost.
+  // Primary: average of this route's readings at the same weekday + same
+  // hour over the past 6 weeks. Fallback (young history): same hour on any
+  // day over 4 weeks. No history at all → usual = current (no delay shown).
+  private async usualFromHistory(
+    table: 'route_traffic_data' | 'traffic_data',
+    idColumn: 'route_id' | 'junction_id',
+    id: number,
+    totalSeconds: number,
+  ): Promise<{ usualSeconds: number; usualDelay: number }> {
+    if (!totalSeconds) return { usualSeconds: 0, usualDelay: 0 };
+    try {
+      const primary = await this.db.query(
+        `SELECT AVG(total_seconds) AS avg, COUNT(*) AS n FROM ${table}
+         WHERE ${idColumn}=$1 AND source='google' AND total_seconds > 0
+           AND EXTRACT(DOW FROM time) = EXTRACT(DOW FROM NOW())
+           AND EXTRACT(HOUR FROM time) = EXTRACT(HOUR FROM NOW())
+           AND time > NOW() - INTERVAL '42 days'`,
+        [id],
+      );
+      let avg = +primary.rows[0]?.avg || 0;
+      if ((+primary.rows[0]?.n || 0) < 3) {
+        const fallback = await this.db.query(
+          `SELECT AVG(total_seconds) AS avg, COUNT(*) AS n FROM ${table}
+           WHERE ${idColumn}=$1 AND source='google' AND total_seconds > 0
+             AND EXTRACT(HOUR FROM time) = EXTRACT(HOUR FROM NOW())
+             AND time > NOW() - INTERVAL '28 days'`,
+          [id],
+        );
+        if ((+fallback.rows[0]?.n || 0) >= 1) avg = +fallback.rows[0].avg || 0;
+      }
+      if (!avg) return { usualSeconds: totalSeconds, usualDelay: 0 };
+      const usualSeconds = Math.round(avg);
+      const usualDelay = Math.round((Math.max(0, totalSeconds - usualSeconds) / 60) * 10) / 10;
+      return { usualSeconds, usualDelay };
+    } catch {
+      return { usualSeconds: totalSeconds, usualDelay: 0 };
     }
   }
 
@@ -199,10 +226,11 @@ export class SimulatorService {
     const routes = await this.routesSvc.findAllActive();
     const googleKey = process.env.GOOGLE_MAPS_API_KEY;
 
-    // Free-tier guard: 2 Google calls per route (current + usual). If this
-    // run would cross the monthly cap, skip Google entirely for the run.
+    // Free-tier guard: ONE Google call per route (current only — "usual"
+    // comes from our own history for free). If this run would cross the
+    // monthly cap, skip Google entirely for the run.
     const targets = routes.length > 0 ? routes.length : this.junctions.length;
-    const callsNeeded = targets * 2;
+    const callsNeeded = targets;
     const usage = this.readUsage();
     this.googleAllowed = !!googleKey && usage.calls + callsNeeded <= this.freeLimit;
     if (googleKey && !this.googleAllowed) {
@@ -218,8 +246,12 @@ export class SimulatorService {
       const updates: any[] = [];
 
       for (const r of routes) {
-        const { delay, usualDelay, totalSeconds, usualSeconds, freeFlowSeconds, source, polyline } =
+        const { delay, totalSeconds, freeFlowSeconds, source, polyline } =
           await this.fetchRouteTraffic(+r.origin_lat, +r.origin_lng, +r.dest_lat, +r.dest_lng);
+
+        // Free: usual = this route's own average at the same weekday+hour
+        const { usualSeconds, usualDelay } =
+          await this.usualFromHistory('route_traffic_data', 'route_id', r.id, totalSeconds);
 
         const level = this.getLevel(delay);
 
@@ -264,7 +296,7 @@ export class SimulatorService {
 
       this.gateway.broadcastTrafficUpdate(updates);
       const gCount = updates.filter(u => u.source === 'google').length;
-      if (gCount > 0) this.addUsage(gCount * 2);
+      if (gCount > 0) this.addUsage(gCount); // 1 call per road
       const after = this.readUsage();
       this.log.log(
         `Routes updated: ${updates.length} | Google: ${gCount} | Simulator: ${updates.length - gCount}` +
@@ -278,8 +310,12 @@ export class SimulatorService {
       for (const j of this.junctions) {
         const destLat = +j.lat + 0.002;
         const destLng = +j.lng + 0.002;
-        const { delay, usualDelay, totalSeconds, usualSeconds, freeFlowSeconds, source } =
+        const { delay, totalSeconds, freeFlowSeconds, source } =
           await this.fetchRouteTraffic(+j.lat, +j.lng, destLat, destLng);
+
+        // Free: usual = this junction's own average at the same weekday+hour
+        const { usualSeconds, usualDelay } =
+          await this.usualFromHistory('traffic_data', 'junction_id', j.id, totalSeconds);
 
         const level = this.getLevel(delay);
         const speedKmh = Math.max(5, Math.round(60 - delay * 5));
@@ -304,7 +340,7 @@ export class SimulatorService {
 
       this.gateway.broadcastTrafficUpdate(updates);
       const gCount = updates.filter(u => u.source === 'google').length;
-      if (gCount > 0) this.addUsage(gCount * 2);
+      if (gCount > 0) this.addUsage(gCount); // 1 call per road
       const after = this.readUsage();
       this.log.log(
         `Junctions updated: ${updates.length} | Google: ${gCount} | Simulator: ${updates.length - gCount}` +
