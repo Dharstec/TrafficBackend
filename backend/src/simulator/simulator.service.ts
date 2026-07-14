@@ -32,7 +32,7 @@ export class SimulatorService {
     try {
       const saved = JSON.parse(fs.readFileSync(this.usageFile, 'utf8'));
       if (saved.month === month) return saved; // new month → fresh counter
-    } catch {}
+    } catch { }
     return { month, calls: 0 };
   }
 
@@ -106,6 +106,9 @@ export class SimulatorService {
         fetch(`${base}&departure_time=${nextWeekTs}`).then(r => r.json()),
       ]);
 
+      this.logGoogleResponse('LIVE', curRes);
+      this.logGoogleResponse('USUAL', usualRes);
+
       if (curRes.status !== 'OK') {
         this.log.error(`[Google] ${curRes.status}: ${curRes.error_message || ''}`);
         return { delay: this.fallbackDelay(), usualDelay: 0, totalSeconds: 0, usualSeconds: 0, freeFlowSeconds: 0, source: 'simulator' };
@@ -129,6 +132,34 @@ export class SimulatorService {
     } catch (e: any) {
       this.log.error(`[Google] Fetch error: ${e.message}`);
       return { delay: this.fallbackDelay(), usualDelay: 0, totalSeconds: 0, usualSeconds: 0, freeFlowSeconds: 0, source: 'simulator' };
+    }
+  }
+
+  // Log what Google actually answered. Always prints a readable one-line
+  // summary; set GOOGLE_LOG=full in .env to also dump the complete raw JSON.
+  private logGoogleResponse(tag: string, res: any) {
+    try {
+      const leg = res?.routes?.[0]?.legs?.[0];
+      if (!leg) {
+        this.log.warn(`[Google ${tag}] status=${res?.status} ${res?.error_message || ''} (no route in response)`);
+        return;
+      }
+      this.log.log(`[Google ${tag}] ` + JSON.stringify({
+        status: res.status,
+        road: res.routes[0].summary,
+        from: leg.start_address,
+        to: leg.end_address,
+        distance: leg.distance?.text,
+        duration: `${leg.duration?.text} (${leg.duration?.value}s)`,
+        duration_in_traffic: leg.duration_in_traffic
+          ? `${leg.duration_in_traffic.text} (${leg.duration_in_traffic.value}s)`
+          : 'not returned',
+      }));
+      if (process.env.GOOGLE_LOG === 'full') {
+        this.log.log(`[Google ${tag} RAW] ${JSON.stringify(res)}`);
+      }
+    } catch (e: any) {
+      this.log.error(`[Google ${tag}] could not log response: ${e.message}`);
     }
   }
 
