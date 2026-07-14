@@ -657,7 +657,11 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
       { lat: -89, lng: -179 }, { lat: -89, lng: 179 },
       { lat: 89, lng: 179 }, { lat: 89, lng: -179 },
     ];
-    const ringPaths = rings.map(ring => ring.map(([lat, lng]) => ({ lat, lng })));
+    // Google punches a hole only when the inner ring is wound in the
+    // OPPOSITE direction to the outer ring — hence the .reverse(). Without
+    // it the mask covers the entire map (white screen) instead of leaving
+    // Chennai visible.
+    const ringPaths = rings.map(ring => ring.map(([lat, lng]) => ({ lat, lng })).reverse());
     this.cityMaskG = new google.maps.Polygon({
       map: this.gmap,
       paths: [world, ...ringPaths],

@@ -15,5 +15,5 @@ export const environment = {
   // Browser key for Google Maps JavaScript API. Best practice: a SEPARATE
   // key from the server's Directions key, restricted by HTTP referrer,
   // with "Maps JavaScript API" enabled.
-  googleMapsKey: 'AIzaSyBdKzi2G2iIAPzI2lc3HUSFYzsfkcdVWQs',
+  googleMapsKey: 'AIzaSyDEDda1Pq0Bwm3gmUkxKHY9GvaBXQPteBs',
 };
