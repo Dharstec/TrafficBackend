@@ -1,4 +1,4 @@
-import { Controller, Post, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { SimulatorService } from './simulator.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -7,11 +7,17 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 export class SimulatorController {
   constructor(private service: SimulatorService) {}
 
-  // Manual "Refresh Now" from the dashboard — runs the same Google API pass
-  // the 5-minute cron does, without waiting for the next tick.
+  // Manual "Refresh Now" from the dashboard — the only way Google gets
+  // called unless AUTO_REFRESH=true is set in .env.
   @Post('refresh')
   async refresh() {
     await this.service.runOnce();
-    return { refreshed: true, time: new Date() };
+    return { refreshed: true, usage: this.service.getUsage(), time: new Date() };
+  }
+
+  // Monthly free-tier usage — the dashboard shows this next to the button.
+  @Get('usage')
+  usage() {
+    return this.service.getUsage();
   }
 }

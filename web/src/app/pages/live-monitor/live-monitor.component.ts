@@ -10,6 +10,7 @@ import * as L from 'leaflet';
 @Component({
   selector: 'app-live-monitor',
   templateUrl: './live-monitor.component.html',
+  styleUrls: ['./live-monitor.component.scss'],
 })
 export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   trafficData: any[] = [];      // junction-level (fallback)
@@ -23,6 +24,8 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   get displayData() { return this.hasRoutes ? this.routeTrafficData : this.trafficData; }
   activeTab: 'map' | 'officers' | 'duty' = 'map';
   lastUpdate = new Date();
+  refreshing = false;
+  usage: any = null; // Google free-tier usage { calls, limit, remaining }
 
   // Filters for each panel
   searchFreeFlow = '';
@@ -45,6 +48,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit() {
     this.load();
+    this.loadUsage();
     this.subs.push(
       this.socket.trafficUpdates$.subscribe(updates => {
         updates.forEach(u => {
@@ -89,6 +93,33 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
 
   loadTodayDuty() {
     this.officerSvc.getAllTodayDuty().subscribe(d => this.todayDuty = d);
+  }
+
+  loadUsage() {
+    this.trafficSvc.getUsage().subscribe({
+      next: u => this.usage = u,
+      error: () => {}, // endpoint not deployed yet — badge just stays hidden
+    });
+  }
+
+  // Only this button spends Google API quota (auto-refresh is off).
+  refreshNow() {
+    if (this.refreshing) return;
+    this.refreshing = true;
+    this.trafficSvc.refreshNow().subscribe({
+      next: res => {
+        if (res?.usage) this.usage = res.usage;
+        this.load();
+        this.lastUpdate = new Date();
+        this.refreshing = false;
+      },
+      error: () => { this.refreshing = false; },
+    });
+  }
+
+  get usagePercent(): number {
+    if (!this.usage?.limit) return 0;
+    return Math.min(100, Math.round((this.usage.calls / this.usage.limit) * 100));
   }
 
   acknowledgeAlert(i: number) { this.heavyAlerts[i].acknowledged = true; }

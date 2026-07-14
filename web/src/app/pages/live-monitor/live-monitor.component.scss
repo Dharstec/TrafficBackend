@@ -1,0 +1,185 @@
+// Live Monitor polish — scoped to this component only (classic design).
+
+// ── Header: live dot + title, usage meter + refresh on the right ──
+.lmc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+  padding: 12px 18px;
+  margin-bottom: 14px;
+}
+
+.lmc-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  h5 { letter-spacing: -0.01em; }
+}
+
+.lmc-live-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e53935;
+  flex: 0 0 auto;
+  animation: lmc-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes lmc-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.45); }
+  50% { box-shadow: 0 0 0 7px rgba(229, 57, 53, 0); }
+}
+
+.lmc-header-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+// ── Google free-tier usage meter ────────────────────────────────
+.lmc-usage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-radius: 10px;
+  padding: 5px 12px;
+
+  i { font-size: 1rem; }
+
+  &.lmc-usage-warn {
+    background: #fff8e1;
+    color: #b26a00;
+    .lmc-usage-fill { background: #ffa000; }
+  }
+
+  &.lmc-usage-danger {
+    background: #ffebee;
+    color: #c62828;
+    .lmc-usage-fill { background: #e53935; }
+  }
+}
+
+.lmc-usage-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.lmc-usage-text {
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.lmc-usage-bar {
+  width: 110px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.lmc-usage-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: #43a047;
+  transition: width 0.4s ease;
+}
+
+// ── Refresh Now button — the only thing that spends API quota ───
+.lmc-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: none;
+  background: linear-gradient(135deg, #1e88e5, #1565c0);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: 20px;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(21, 101, 192, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 14px rgba(21, 101, 192, 0.45);
+  }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: wait;
+  }
+}
+
+.lmc-spin {
+  animation: lmc-spin 0.9s linear infinite;
+}
+
+@keyframes lmc-spin {
+  to { transform: rotate(360deg); }
+}
+
+// ── Pill tab bar ────────────────────────────────────────────────
+.lmc-tabbar {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.lmc-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: none;
+  background: transparent;
+  color: #5f6b7a;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  &:hover { background: #f1f4f8; color: #1f2a37; }
+
+  &.active {
+    background: linear-gradient(135deg, #1e88e5, #1565c0);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(21, 101, 192, 0.35);
+  }
+}
+
+.lmc-tab-count {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  padding: 1px 7px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.lmc-tab.active .lmc-tab-count {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+// ── Map card ────────────────────────────────────────────────────
+.lmc-map-card {
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
+
+  &[hidden] { display: none !important; }
+}

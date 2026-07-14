@@ -8,6 +8,17 @@ export class TrafficService {
 
   getLatest() { return this.http.get<any[]>(`${environment.apiUrl}/traffic/latest`); }
 
+  // Manual "Refresh Now" — backend calls Google once for every route.
+  // Auto-refresh is off by default, so this button is what spends quota.
+  refreshNow() {
+    return this.http.post<any>(`${environment.apiUrl}/simulator/refresh`, {});
+  }
+
+  // Monthly Google free-tier usage { month, calls, limit, remaining }
+  getUsage() {
+    return this.http.get<any>(`${environment.apiUrl}/simulator/usage`);
+  }
+
   getByJunction(id: number, hours = 24) {
     return this.http.get<any[]>(`${environment.apiUrl}/traffic/junction/${id}?hours=${hours}`);
   }

@@ -1,6 +1,8 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Pool } from 'pg';
+import * as fs from 'fs';
+import * as path from 'path';
 import { DB_POOL } from '../database/database.module';
 import { TrafficGateway } from '../gateway/traffic.gateway';
 import { JunctionRoutesService } from '../junction-routes/junction-routes.service';
@@ -9,6 +11,51 @@ import { JunctionRoutesService } from '../junction-routes/junction-routes.servic
 export class SimulatorService {
   private readonly log = new Logger(SimulatorService.name);
   private junctions: any[] = [];
+
+  // ── Google free-tier protection ────────────────────────────────────
+  // Directions API with traffic data ("Advanced") gives 5,000 free calls
+  // per month; we cap below that so the bill can never leave ₹0. Usage is
+  // persisted to a JSON file so PM2 restarts don't reset the counter.
+  private usageFile = path.join(process.cwd(), 'api-usage.json');
+  private googleAllowed = false;
+
+  get freeLimit(): number {
+    return +(process.env.GOOGLE_FREE_LIMIT || 4500);
+  }
+
+  get autoRefreshEnabled(): boolean {
+    return process.env.AUTO_REFRESH === 'true';
+  }
+
+  private readUsage(): { month: string; calls: number } {
+    const month = new Date().toISOString().slice(0, 7); // YYYY-MM
+    try {
+      const saved = JSON.parse(fs.readFileSync(this.usageFile, 'utf8'));
+      if (saved.month === month) return saved; // new month → fresh counter
+    } catch {}
+    return { month, calls: 0 };
+  }
+
+  private addUsage(calls: number) {
+    const u = this.readUsage();
+    u.calls += calls;
+    try {
+      fs.writeFileSync(this.usageFile, JSON.stringify(u));
+    } catch (e: any) {
+      this.log.error(`[Quota] Could not persist usage file: ${e.message}`);
+    }
+  }
+
+  getUsage() {
+    const u = this.readUsage();
+    return {
+      month: u.month,
+      calls: u.calls,
+      limit: this.freeLimit,
+      remaining: Math.max(0, this.freeLimit - u.calls),
+      auto_refresh: this.autoRefreshEnabled,
+    };
+  }
 
   constructor(
     @Inject(DB_POOL) private db: Pool,
@@ -41,7 +88,8 @@ export class SimulatorService {
     source: string;
   }> {
     const googleKey = process.env.GOOGLE_MAPS_API_KEY;
-    if (!googleKey) {
+    // googleAllowed is set per run: key present AND monthly free quota left
+    if (!googleKey || !this.googleAllowed) {
       const delay = this.fallbackDelay();
       return { delay, usualDelay: 0, totalSeconds: 0, usualSeconds: 0, freeFlowSeconds: 0, source: 'simulator' };
     }
@@ -100,13 +148,34 @@ export class SimulatorService {
     return 'heavy';
   }
 
+  // Auto mode is OPT-IN: the cron only calls Google when AUTO_REFRESH=true
+  // in .env. Default is button-only — the dashboard's "Refresh Now" hits
+  // POST /simulator/refresh, so API calls happen only on click.
   @Cron(CronExpression.EVERY_5_MINUTES)
+  async cronTick() {
+    if (!this.autoRefreshEnabled) return;
+    await this.runSimulation();
+  }
+
   async runSimulation() {
     await this.loadJunctions();
 
     // Prefer routes if defined; fallback to junction-point approximation
     const routes = await this.routesSvc.findAllActive();
     const googleKey = process.env.GOOGLE_MAPS_API_KEY;
+
+    // Free-tier guard: 2 Google calls per route (current + usual). If this
+    // run would cross the monthly cap, skip Google entirely for the run.
+    const targets = routes.length > 0 ? routes.length : this.junctions.length;
+    const callsNeeded = targets * 2;
+    const usage = this.readUsage();
+    this.googleAllowed = !!googleKey && usage.calls + callsNeeded <= this.freeLimit;
+    if (googleKey && !this.googleAllowed) {
+      this.log.warn(
+        `[Quota] ${usage.calls}/${this.freeLimit} calls used in ${usage.month} — ` +
+        `this run needs ${callsNeeded}, staying on simulator to protect the free tier`,
+      );
+    }
 
     if (routes.length > 0) {
       // === ROUTE-BASED mode: one Google call per route ===
@@ -149,7 +218,12 @@ export class SimulatorService {
 
       this.gateway.broadcastTrafficUpdate(updates);
       const gCount = updates.filter(u => u.source === 'google').length;
-      this.log.log(`Routes updated: ${updates.length} | Google: ${gCount} | Simulator: ${updates.length - gCount}`);
+      if (gCount > 0) this.addUsage(gCount * 2);
+      const after = this.readUsage();
+      this.log.log(
+        `Routes updated: ${updates.length} | Google: ${gCount} | Simulator: ${updates.length - gCount}` +
+        ` | Quota: ${after.calls}/${this.freeLimit} this month`,
+      );
     } else {
       // === JUNCTION-POINT fallback: approximate 400m northeast segment ===
       this.log.log(`Junction-point simulation: ${this.junctions.length} junctions (no routes defined)`);
@@ -183,6 +257,13 @@ export class SimulatorService {
       }
 
       this.gateway.broadcastTrafficUpdate(updates);
+      const gCount = updates.filter(u => u.source === 'google').length;
+      if (gCount > 0) this.addUsage(gCount * 2);
+      const after = this.readUsage();
+      this.log.log(
+        `Junctions updated: ${updates.length} | Google: ${gCount} | Simulator: ${updates.length - gCount}` +
+        ` | Quota: ${after.calls}/${this.freeLimit} this month`,
+      );
     }
   }
 

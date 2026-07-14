@@ -1,6 +1,29 @@
-<div class="topbar">
-  <h5 class="mb-0 fw-bold"><i class="bi bi-broadcast me-2 text-danger"></i>Traffic Live Monitor</h5>
-  <span class="text-muted small">Last update: {{ lastUpdate | date:'HH:mm:ss' }}</span>
+<div class="lmc-header">
+  <div class="lmc-title">
+    <span class="lmc-live-dot"></span>
+    <h5 class="mb-0 fw-bold">Traffic Live Monitor</h5>
+  </div>
+
+  <div class="lmc-header-right">
+    <!-- Google free-tier usage — turns amber at 80%, red at 95% -->
+    <div class="lmc-usage" *ngIf="usage"
+      [class.lmc-usage-warn]="usagePercent >= 80" [class.lmc-usage-danger]="usagePercent >= 95"
+      title="Google API calls used this month (free limit protected)">
+      <i class="bi bi-shield-check"></i>
+      <div class="lmc-usage-info">
+        <span class="lmc-usage-text">{{ usage.calls }} / {{ usage.limit }} free calls</span>
+        <div class="lmc-usage-bar"><div class="lmc-usage-fill" [style.width.%]="usagePercent"></div></div>
+      </div>
+    </div>
+
+    <span class="text-muted small"><i class="bi bi-clock me-1"></i>{{ lastUpdate | date:'HH:mm:ss' }}</span>
+
+    <button type="button" class="lmc-refresh" (click)="refreshNow()" [disabled]="refreshing"
+      title="Call Google API now — data updates only when you click this">
+      <i class="bi bi-arrow-repeat" [class.lmc-spin]="refreshing"></i>
+      {{ refreshing ? 'Refreshing…' : 'Refresh Now' }}
+    </button>
+  </div>
 </div>
 
 <!-- Heavy Traffic Alerts -->
@@ -149,27 +172,23 @@
 </div>
 
 <!-- Tabs: Officers + Map -->
-<ul class="nav nav-tabs mb-3">
-  <li class="nav-item">
-    <a class="nav-link" [class.active]="activeTab==='map'" (click)="activeTab='map'" style="cursor:pointer">
-      <i class="bi bi-map me-1"></i>Live Map
-    </a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link" [class.active]="activeTab==='officers'" (click)="activeTab='officers'" style="cursor:pointer">
-      <i class="bi bi-person-badge me-1"></i>Live Officers ({{ liveOfficers.length }})
-    </a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link" [class.active]="activeTab==='duty'" (click)="activeTab='duty';loadTodayDuty()" style="cursor:pointer">
-      <i class="bi bi-clock-history me-1"></i>Today's Duty ({{ todayDuty.length }})
-    </a>
-  </li>
-</ul>
+<div class="lmc-tabbar mb-3">
+  <button type="button" class="lmc-tab" [class.active]="activeTab==='map'" (click)="activeTab='map'">
+    <i class="bi bi-map"></i>Live Map
+  </button>
+  <button type="button" class="lmc-tab" [class.active]="activeTab==='officers'" (click)="activeTab='officers'">
+    <i class="bi bi-person-badge"></i>Live Officers
+    <span class="lmc-tab-count">{{ liveOfficers.length }}</span>
+  </button>
+  <button type="button" class="lmc-tab" [class.active]="activeTab==='duty'" (click)="activeTab='duty';loadTodayDuty()">
+    <i class="bi bi-clock-history"></i>Today's Duty
+    <span class="lmc-tab-count">{{ todayDuty.length }}</span>
+  </button>
+</div>
 
 <!-- Map -->
-<div *ngIf="activeTab==='map'">
-  <div id="live-map" style="height:500px;border-radius:12px;"></div>
+<div [hidden]="activeTab!=='map'" class="lmc-map-card">
+  <div id="live-map" style="height:520px"></div>
 </div>
 
 <!-- Officers Tab -->
