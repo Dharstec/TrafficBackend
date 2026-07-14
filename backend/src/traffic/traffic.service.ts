@@ -11,21 +11,25 @@ export class TrafficService {
   ) {}
 
   async getLatestRouteTraffic() {
+    const query = (withPolyline: boolean) => `
+      SELECT DISTINCT ON (rtd.route_id)
+        rtd.*, jr.coming_from, jr.junction_id,
+        jr.origin_lat, jr.origin_lng, jr.dest_lat, jr.dest_lng,
+        ${withPolyline ? 'jr.polyline,' : ''}
+        j.name AS junction_name, j.short_name, j.station, j.district,
+        j.lat AS junction_lat, j.lng AS junction_lng
+      FROM route_traffic_data rtd
+      JOIN junction_routes jr ON jr.id = rtd.route_id
+      JOIN junctions j ON j.id = jr.junction_id
+      WHERE jr.is_active = true AND j.is_active = true
+      ORDER BY rtd.route_id, rtd.time DESC
+    `;
     try {
-      const res = await this.db.query(`
-        SELECT DISTINCT ON (rtd.route_id)
-          rtd.*, jr.coming_from, jr.junction_id,
-          j.name AS junction_name, j.short_name, j.station, j.district,
-          j.lat AS junction_lat, j.lng AS junction_lng
-        FROM route_traffic_data rtd
-        JOIN junction_routes jr ON jr.id = rtd.route_id
-        JOIN junctions j ON j.id = jr.junction_id
-        WHERE jr.is_active = true AND j.is_active = true
-        ORDER BY rtd.route_id, rtd.time DESC
-      `);
-      return res.rows;
+      return (await this.db.query(query(true))).rows;
     } catch (e: any) {
       if (e.code === '42P01') return [];
+      // polyline column not migrated yet — serve data without road shapes
+      if (e.code === '42703') return (await this.db.query(query(false))).rows;
       throw e;
     }
   }
