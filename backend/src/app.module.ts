@@ -11,6 +11,7 @@ import { IncidentsModule } from './incidents/incidents.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { JunctionRoutesModule } from './junction-routes/junction-routes.module';
 import { SimulatorService } from './simulator/simulator.service';
+import { SimulatorController } from './simulator/simulator.controller';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { SimulatorService } from './simulator/simulator.service';
     JunctionRoutesModule,
   ],
   providers: [SimulatorService],
+  controllers: [SimulatorController],
 })
 export class AppModule implements OnModuleInit {
   constructor(private simulator: SimulatorService) {}
