@@ -72,9 +72,8 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   private junctionNumberById = new Map<number, number>();
   private nextJunctionNumber = 1;
   private officerMarkers = new Map<number, L.Marker>();
-  // Each traffic line is 3 stacked strokes: dark casing (depth), the colored
-  // road, and a thin animated white dash flowing toward the junction.
-  private routeLines = new Map<number, { casing: L.Polyline; main: L.Polyline; flow: L.Polyline }>();
+  // One thin colored line per route, offset beside the road centerline.
+  private routeLines = new Map<number, L.Polyline>();
 
   private subs: Subscription[] = [];
 
@@ -347,13 +346,11 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
       if (!shouldShow && onMap) this.map!.removeLayer(marker);
     });
     // Traffic lines follow their junction's visibility
-    this.routeLines.forEach(group => {
-      const shouldShow = visibleIds.has((group.main as any)._junctionId);
-      [group.casing, group.main, group.flow].forEach(layer => {
-        const onMap = this.map!.hasLayer(layer);
-        if (shouldShow && !onMap) layer.addTo(this.map!);
-        if (!shouldShow && onMap) this.map!.removeLayer(layer);
-      });
+    this.routeLines.forEach(line => {
+      const shouldShow = visibleIds.has((line as any)._junctionId);
+      const onMap = this.map!.hasLayer(line);
+      if (shouldShow && !onMap) line.addTo(this.map!);
+      if (!shouldShow && onMap) this.map!.removeLayer(line);
     });
   }
 
@@ -397,12 +394,6 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     // Zoom-out limit = Chennai exactly filling the screen. One more zoom-out
     // step is impossible — the full-city view IS the widest view.
     this.map.setMinZoom(this.map.getBoundsZoom(chennai));
-
-    // Stacked panes for the 3-stroke traffic lines: casing < road < flow,
-    // all beneath markers (zIndex 600) so pins stay clickable on top.
-    this.map.createPane('lmCasing').style.zIndex = '402';
-    this.map.createPane('lmMain').style.zIndex = '403';
-    this.map.createPane('lmFlow').style.zIndex = '404';
 
     this.baseLayers = {
       map: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -704,19 +695,33 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     return pts;
   }
 
-  // Darker shade of a hex color — used for the line casing.
-  private shade(hex: string, f: number): string {
-    const n = parseInt(hex.slice(1), 16);
-    const r = Math.round(((n >> 16) & 255) * f);
-    const g = Math.round(((n >> 8) & 255) * f);
-    const b = Math.round((n & 255) * f);
-    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  // Nudges a road path a few metres sideways so the line sits BESIDE the
+  // road centerline rather than dead on top of it — this is what makes
+  // Google's traffic overlay read as "drawn on the road" rather than a
+  // marker-style line. Offset direction is each point's local travel
+  // normal (perpendicular to its neighbours), so it hugs curves cleanly.
+  private offsetPath(path: [number, number][], metres = 3.2): [number, number][] {
+    if (path.length < 2) return path;
+    // ~1 degree latitude ≈ 111,320 m; longitude shrinks by cos(latitude)
+    const latRad = (path[0][0] * Math.PI) / 180;
+    const degPerMetreLat = 1 / 111320;
+    const degPerMetreLng = 1 / (111320 * Math.cos(latRad));
+    return path.map((p, i) => {
+      const a = path[Math.max(0, i - 1)];
+      const b = path[Math.min(path.length - 1, i + 1)];
+      let dx = b[1] - a[1], dy = b[0] - a[0]; // (lng, lat) direction
+      const len = Math.hypot(dx, dy) || 1;
+      dx /= len; dy /= len;
+      const nx = -dy, ny = dx; // perpendicular, consistent side along the road
+      return [p[0] + ny * metres * degPerMetreLat, p[1] + nx * metres * degPerMetreLng] as [number, number];
+    });
   }
 
-  // Draws every route Google-Maps-traffic style: a dark casing underneath
-  // for depth, the congestion-colored road on top, and a thin animated
-  // white dash "flowing" toward the junction. Real road shape when the
-  // polyline is stored; dashed straight fallback until the first refresh.
+  // Draws each route as a thin, precise line hugging the road — Google
+  // Maps "Live traffic" style: no casing, no glow, just a clean colored
+  // stroke offset slightly beside the road centerline. Real road shape
+  // when the polyline is stored; dashed straight fallback until the first
+  // Google refresh saves one.
   private renderRouteLines(rows: any[]) {
     if (!this.map) return;
     const live = new Set<number>();
@@ -726,57 +731,43 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
       if (id == null) return;
       live.add(id);
 
-      let path: [number, number][] | null = null;
-      if (r.polyline) path = this.decodePolyline(r.polyline);
+      let raw: [number, number][] | null = null;
+      if (r.polyline) raw = this.decodePolyline(r.polyline);
       else if (r.origin_lat != null && r.dest_lat != null) {
-        path = [[+r.origin_lat, +r.origin_lng], [+r.dest_lat, +r.dest_lng]];
+        raw = [[+r.origin_lat, +r.origin_lng], [+r.dest_lat, +r.dest_lng]];
       }
-      if (!path || path.length < 2) return;
+      if (!raw || raw.length < 2) return;
+      const path = this.offsetPath(raw);
 
       const color = this.getCongestionColor(r.congestion_level);
-      const casingStyle: L.PolylineOptions = {
-        pane: 'lmCasing', color: this.shade(color, 0.55), weight: 11, opacity: 0.9,
-        lineCap: 'round', lineJoin: 'round', interactive: false,
-        dashArray: r.polyline ? undefined : '10 14',
-      };
-      const mainStyle: L.PolylineOptions = {
-        pane: 'lmMain', color, weight: 6.5, opacity: 0.95,
+      const style: L.PolylineOptions = {
+        color, weight: 4, opacity: 0.9,
         lineCap: 'round', lineJoin: 'round',
-        dashArray: r.polyline ? undefined : '8 16',
-      };
-      const flowStyle: L.PolylineOptions = {
-        pane: 'lmFlow', color: '#ffffff', weight: 2.2, opacity: 0.55,
-        lineCap: 'round', lineJoin: 'round', interactive: false,
-        dashArray: '2 14', className: 'lm-flow-line',
+        dashArray: r.polyline ? undefined : '5 8',
       };
       const tip = `${r.coming_from || r.junction_name} — ${r.delay_minutes}m delay (${r.congestion_level})`;
 
       const existing = this.routeLines.get(id);
       if (existing) {
-        existing.casing.setLatLngs(path); existing.casing.setStyle(casingStyle);
-        existing.main.setLatLngs(path); existing.main.setStyle(mainStyle);
-        existing.flow.setLatLngs(path);
-        existing.main.setTooltipContent(tip);
+        existing.setLatLngs(path);
+        existing.setStyle(style);
+        existing.setTooltipContent(tip);
       } else {
-        const casing = L.polyline(path, casingStyle).addTo(this.map!);
-        const main = L.polyline(path, mainStyle).addTo(this.map!);
-        const flow = L.polyline(path, flowStyle).addTo(this.map!);
-        main.bindTooltip(tip, { sticky: true });
-        (main as any)._junctionId = r.junction_id;
-        main.on('click', () => this.selectJunction(this.junctionDataById.get(r.junction_id) || r));
-        // Hover lift — the line visibly thickens under the cursor
-        main.on('mouseover', () => { casing.setStyle({ weight: 14 }); main.setStyle({ weight: 8.5 }); });
-        main.on('mouseout', () => { casing.setStyle({ weight: 11 }); main.setStyle({ weight: 6.5 }); });
-        this.routeLines.set(id, { casing, main, flow });
+        const line = L.polyline(path, style).addTo(this.map!);
+        line.bindTooltip(tip, { sticky: true });
+        (line as any)._junctionId = r.junction_id;
+        line.on('click', () => this.selectJunction(this.junctionDataById.get(r.junction_id) || r));
+        // Subtle hover lift
+        line.on('mouseover', () => line.setStyle({ weight: 6 }));
+        line.on('mouseout', () => line.setStyle({ weight: 4 }));
+        this.routeLines.set(id, line);
       }
     });
 
     // Remove lines for routes that no longer exist
-    this.routeLines.forEach((group, id) => {
+    this.routeLines.forEach((line, id) => {
       if (!live.has(id)) {
-        this.map!.removeLayer(group.casing);
-        this.map!.removeLayer(group.main);
-        this.map!.removeLayer(group.flow);
+        this.map!.removeLayer(line);
         this.routeLines.delete(id);
       }
     });

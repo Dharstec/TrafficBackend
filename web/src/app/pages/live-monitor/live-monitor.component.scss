@@ -723,18 +723,30 @@
   display: inline-block;
 }
 
-// Size legend — mirrors the pin-size tiers driven by delay minutes.
-.lm-legend-pin {
-  display: inline-block;
-  border-radius: 50%;
-  background: var(--g-text-secondary);
-  flex: 0 0 auto;
+// Google-style "Live traffic: Fast [gradient] Slow" strip.
+.lm-legend-traffic {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.lm-legend-pin-sm { width: 7px; height: 7px; }
-.lm-legend-pin-md { width: 10px; height: 10px; }
-.lm-legend-pin-lg { width: 13px; height: 13px; }
-.lm-legend-pin-xl { width: 16px; height: 16px; }
+.lm-legend-traffic-label {
+  font-weight: 600;
+  color: var(--g-text);
+  margin-right: 2px;
+}
+
+.lm-legend-traffic-tag {
+  font-size: 0.64rem;
+  color: var(--g-text-secondary);
+}
+
+.lm-legend-traffic-bar {
+  width: 64px;
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(to right, #4caf50, #ff9800, #f44336, #795548);
+}
 
 // ── Floating results panel ────────────────────────────────────
 .lm-panel {
