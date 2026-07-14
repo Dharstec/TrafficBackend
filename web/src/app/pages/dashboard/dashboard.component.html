@@ -1,6 +1,6 @@
 <div class="topbar">
   <h5 class="mb-0 fw-bold"><i class="bi bi-speedometer2 me-2 text-primary"></i>Dashboard</h5>
-  <span class="text-muted small">Live updates every 5 minutes</span>
+  <span class="text-muted small">Updates on Refresh Now — no auto API calls</span>
 </div>
 
 <!-- Summary Cards -->
@@ -79,7 +79,7 @@
               <td>{{ d.active_officers || 0 }}</td>
             </tr>
             <tr *ngIf="!trafficData.length">
-              <td colspan="5" class="text-center text-muted py-4">No data yet — simulator runs every 5 min</td>
+              <td colspan="5" class="text-center text-muted py-4">No data yet — click Refresh Now on Live Monitor</td>
             </tr>
           </tbody>
         </table>
