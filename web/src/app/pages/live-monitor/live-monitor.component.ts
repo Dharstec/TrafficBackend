@@ -363,8 +363,16 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   //   Dark      → CARTO Dark Matter (control-room night mode)
   initMap() {
     if (!this.leafletEl) return;
-    this.map = L.map(this.leafletEl.nativeElement, { zoomControl: false })
-      .setView([11.0168, 76.9558], 13);
+    // City-locked map: opens on Chennai and cannot be panned away to the
+    // rest of the country/world. Once junction pins load, the lock tightens
+    // to exactly the junctions' own area (see renderJunctionPins).
+    const chennai = L.latLngBounds([12.75, 79.90], [13.35, 80.40]);
+    this.map = L.map(this.leafletEl.nativeElement, {
+      zoomControl: false,
+      maxBounds: chennai,
+      maxBoundsViscosity: 1.0, // hard wall — no dragging outside the city
+      minZoom: 10,
+    }).setView([13.0475, 80.2090], 12);
     L.control.zoom({ position: 'bottomright' }).addTo(this.map);
 
     this.baseLayers = {
@@ -408,9 +416,15 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     if (layer === 'satellite') this.satLabels?.addTo(this.map);
   }
 
-  // Big preview thumb (Google Maps behavior): one tap flips Map ↔ Satellite.
-  toggleQuickLayer() {
-    this.setBaseLayer(this.baseLayer === 'satellite' ? 'map' : 'satellite');
+  // The big thumb always reflects the CURRENTLY selected layer.
+  get currentLayerMeta() {
+    const meta = {
+      map: { name: 'Default', icon: 'bi-map-fill', thumbClass: 'lm-thumb-map' },
+      satellite: { name: 'Satellite', icon: 'bi-globe-americas', thumbClass: 'lm-thumb-sat' },
+      terrain: { name: 'Terrain', icon: 'bi-image-alt', thumbClass: 'lm-thumb-terrain' },
+      dark: { name: 'Dark', icon: 'bi-moon-stars', thumbClass: 'lm-thumb-dark' },
+    };
+    return meta[this.baseLayer];
   }
 
   // Chip picked from the expanded row: apply it and tuck the row away again.
@@ -523,10 +537,13 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
 
-    // Fit the view once on first render; later refreshes keep the user's view
+    // Fit the view once on first render; later refreshes keep the user's view.
+    // Also re-lock the pan limits to the junctions' own city area, so the
+    // map can never wander off to other districts or the world map.
     if (data.length > 0 && !this.didFitBounds) {
       const bounds = L.latLngBounds(data.map(d => [d.lat, d.lng] as [number, number]));
       this.map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
+      this.map.setMaxBounds(bounds.pad(1.5));
       this.didFitBounds = true;
     }
 
@@ -576,7 +593,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
         const travel = r.total_seconds ? ` · ${Math.round(r.total_seconds / 60)} min travel` : '';
         return `<div style="margin:4px 0;${i === 0 ? 'font-weight:700' : ''}">
             <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${c};margin-right:6px"></span>
-            ${r.coming_from || 'Road ' + (i + 1)} — <b style="color:${c}">${r.delay_minutes}m delay</b>${travel}${i === 0 ? ' &nbsp;⬅ highest' : ''}
+            ${r.coming_from || 'Road ' + (i + 1)} — <b style="color:${c}">${r.delay_minutes}m delay</b>${travel}
           </div>`;
       }).join('');
       return `

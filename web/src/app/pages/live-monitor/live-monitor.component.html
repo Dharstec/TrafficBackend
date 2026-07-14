@@ -115,12 +115,12 @@
     <!-- Google-Maps-style basemap control: thumb tap flips Map ↔ Satellite,
          the chevron expands the layer chips to the side (collapsed default). -->
     <div class="lm-basemap" *ngIf="mapReady" [class.expanded]="layersExpanded">
-      <button type="button" class="lm-bm-thumb" (click)="toggleQuickLayer()"
-        [title]="baseLayer==='satellite' ? 'Switch to map' : 'Switch to satellite'">
-        <span class="lm-bm-thumb-img" [class.lm-thumb-sat]="baseLayer!=='satellite'" [class.lm-thumb-map]="baseLayer==='satellite'">
-          <i class="bi" [class.bi-globe-americas]="baseLayer!=='satellite'" [class.bi-map-fill]="baseLayer==='satellite'"></i>
+      <!-- Thumb shows the layer you are ON right now; tap it to open choices -->
+      <button type="button" class="lm-bm-thumb" (click)="layersExpanded = !layersExpanded" title="Choose map layer">
+        <span class="lm-bm-thumb-img" [ngClass]="currentLayerMeta.thumbClass">
+          <i class="bi" [ngClass]="currentLayerMeta.icon"></i>
         </span>
-        <span class="lm-bm-thumb-label">{{ baseLayer==='satellite' ? 'Map' : 'Satellite' }}</span>
+        <span class="lm-bm-thumb-label">{{ currentLayerMeta.name }}</span>
       </button>
 
       <button type="button" class="lm-bm-expand" (click)="layersExpanded = !layersExpanded"
@@ -164,10 +164,10 @@
       </div>
       <div class="lm-legend-divider"></div>
       <div class="lm-legend-row">
-        <div class="lm-legend-item"><span class="lm-legend-pin lm-legend-pin-sm" style="background:#4caf50"></span>Usual</div>
-        <div class="lm-legend-item"><span class="lm-legend-pin lm-legend-pin-md" style="background:#ff9800"></span>Normal</div>
-        <div class="lm-legend-item"><span class="lm-legend-pin lm-legend-pin-lg" style="background:#f44336"></span>Intermediate</div>
-        <div class="lm-legend-item"><span class="lm-legend-pin lm-legend-pin-xl" style="background:#795548"></span>Heavy — bigger pin = worse traffic</div>
+        <div class="lm-legend-item"><span class="lm-legend-pin lm-legend-pin-sm" style="background:#4caf50"></span>0–2 min</div>
+        <div class="lm-legend-item"><span class="lm-legend-pin lm-legend-pin-md" style="background:#ff9800"></span>3–5 min</div>
+        <div class="lm-legend-item"><span class="lm-legend-pin lm-legend-pin-lg" style="background:#f44336"></span>6–9 min</div>
+        <div class="lm-legend-item"><span class="lm-legend-pin lm-legend-pin-xl" style="background:#795548"></span>10+ min</div>
       </div>
     </div>
   </div>
