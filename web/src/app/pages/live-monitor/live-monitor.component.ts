@@ -72,8 +72,8 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   private junctionNumberById = new Map<number, number>();
   private nextJunctionNumber = 1;
   private officerMarkers = new Map<number, L.Marker>();
-  // One thin colored line per route, offset beside the road centerline.
-  private routeLines = new Map<number, L.Polyline>();
+  // One road-ribbon per route: colored fill + slightly darker edge.
+  private routeLines = new Map<number, { casing: L.Polyline; main: L.Polyline }>();
 
   private subs: Subscription[] = [];
 
@@ -346,11 +346,13 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
       if (!shouldShow && onMap) this.map!.removeLayer(marker);
     });
     // Traffic lines follow their junction's visibility
-    this.routeLines.forEach(line => {
-      const shouldShow = visibleIds.has((line as any)._junctionId);
-      const onMap = this.map!.hasLayer(line);
-      if (shouldShow && !onMap) line.addTo(this.map!);
-      if (!shouldShow && onMap) this.map!.removeLayer(line);
+    this.routeLines.forEach(group => {
+      const shouldShow = visibleIds.has((group.main as any)._junctionId);
+      [group.casing, group.main].forEach(layer => {
+        const onMap = this.map!.hasLayer(layer);
+        if (shouldShow && !onMap) layer.addTo(this.map!);
+        if (!shouldShow && onMap) this.map!.removeLayer(layer);
+      });
     });
   }
 
@@ -394,6 +396,12 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     // Zoom-out limit = Chennai exactly filling the screen. One more zoom-out
     // step is impossible — the full-city view IS the widest view.
     this.map.setMinZoom(this.map.getBoundsZoom(chennai));
+
+    // Ribbon panes (edge below fill), both under markers (zIndex 600) so
+    // pins stay clickable on top. Widths re-match the road on every zoom.
+    this.map.createPane('lmCasing').style.zIndex = '402';
+    this.map.createPane('lmMain').style.zIndex = '403';
+    this.map.on('zoomend', () => this.refreshLineWeights());
 
     this.baseLayers = {
       map: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -695,84 +703,98 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     return pts;
   }
 
-  // Nudges a road path a few metres sideways so the line sits BESIDE the
-  // road centerline rather than dead on top of it — this is what makes
-  // Google's traffic overlay read as "drawn on the road" rather than a
-  // marker-style line. Offset direction is each point's local travel
-  // normal (perpendicular to its neighbours), so it hugs curves cleanly.
-  private offsetPath(path: [number, number][], metres = 3.2): [number, number][] {
-    if (path.length < 2) return path;
-    // ~1 degree latitude ≈ 111,320 m; longitude shrinks by cos(latitude)
-    const latRad = (path[0][0] * Math.PI) / 180;
-    const degPerMetreLat = 1 / 111320;
-    const degPerMetreLng = 1 / (111320 * Math.cos(latRad));
-    return path.map((p, i) => {
-      const a = path[Math.max(0, i - 1)];
-      const b = path[Math.min(path.length - 1, i + 1)];
-      let dx = b[1] - a[1], dy = b[0] - a[0]; // (lng, lat) direction
-      const len = Math.hypot(dx, dy) || 1;
-      dx /= len; dy /= len;
-      const nx = -dy, ny = dx; // perpendicular, consistent side along the road
-      return [p[0] + ny * metres * degPerMetreLat, p[1] + nx * metres * degPerMetreLng] as [number, number];
-    });
+  // Darker shade of a hex color — used for the ribbon's edge.
+  private shade(hex: string, f: number): string {
+    const n = parseInt(hex.slice(1), 16);
+    const r = Math.round(((n >> 16) & 255) * f);
+    const g = Math.round(((n >> 8) & 255) * f);
+    const b = Math.round((n & 255) * f);
+    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
   }
 
-  // Draws each route as a thin, precise line hugging the road — Google
-  // Maps "Live traffic" style: no casing, no glow, just a clean colored
-  // stroke offset slightly beside the road centerline. Real road shape
+  // Road-matched ribbon widths — like Google, the traffic ribbon grows with
+  // zoom so it always fills the drawn road instead of floating over it.
+  private lineWeights(): { casing: number; main: number } {
+    const z = this.map?.getZoom() ?? 13;
+    const main =
+      z >= 18 ? 14 :
+      z >= 17 ? 11 :
+      z >= 16 ? 9 :
+      z >= 15 ? 7 :
+      z >= 14 ? 5.5 :
+      z >= 13 ? 4.5 : 3.5;
+    return { casing: main + 3, main };
+  }
+
+  // Draws each route exactly ON the road (no side offset): a colored
+  // ribbon with a slightly darker edge, exactly Google Maps' live-traffic
+  // look. Ribbon width follows zoom (see lineWeights). Real road shape
   // when the polyline is stored; dashed straight fallback until the first
   // Google refresh saves one.
   private renderRouteLines(rows: any[]) {
     if (!this.map) return;
     const live = new Set<number>();
+    const w = this.lineWeights();
 
     rows.forEach(r => {
       const id = r.route_id ?? r.id;
       if (id == null) return;
       live.add(id);
 
-      let raw: [number, number][] | null = null;
-      if (r.polyline) raw = this.decodePolyline(r.polyline);
+      let path: [number, number][] | null = null;
+      if (r.polyline) path = this.decodePolyline(r.polyline);
       else if (r.origin_lat != null && r.dest_lat != null) {
-        raw = [[+r.origin_lat, +r.origin_lng], [+r.dest_lat, +r.dest_lng]];
+        path = [[+r.origin_lat, +r.origin_lng], [+r.dest_lat, +r.dest_lng]];
       }
-      if (!raw || raw.length < 2) return;
-      const path = this.offsetPath(raw);
+      if (!path || path.length < 2) return;
 
       const color = this.getCongestionColor(r.congestion_level);
-      const style: L.PolylineOptions = {
-        color, weight: 4, opacity: 0.9,
+      const casingStyle: L.PolylineOptions = {
+        pane: 'lmCasing', color: this.shade(color, 0.72), weight: w.casing, opacity: 1,
+        lineCap: 'round', lineJoin: 'round', interactive: false,
+        dashArray: r.polyline ? undefined : '6 10',
+      };
+      const mainStyle: L.PolylineOptions = {
+        pane: 'lmMain', color, weight: w.main, opacity: 1,
         lineCap: 'round', lineJoin: 'round',
-        dashArray: r.polyline ? undefined : '5 8',
+        dashArray: r.polyline ? undefined : '6 10',
       };
       const tip = `${r.coming_from || r.junction_name} — ${r.delay_minutes}m delay (${r.congestion_level})`;
 
       const existing = this.routeLines.get(id);
       if (existing) {
-        existing.setLatLngs(path);
-        existing.setStyle(style);
-        existing.setTooltipContent(tip);
+        existing.casing.setLatLngs(path); existing.casing.setStyle(casingStyle);
+        existing.main.setLatLngs(path); existing.main.setStyle(mainStyle);
+        existing.main.setTooltipContent(tip);
       } else {
-        const line = L.polyline(path, style).addTo(this.map!);
-        line.bindTooltip(tip, { sticky: true });
-        (line as any)._junctionId = r.junction_id;
-        line.on('click', () => this.selectJunction(this.junctionDataById.get(r.junction_id) || r));
-        // Subtle hover lift
-        line.on('mouseover', () => line.setStyle({ weight: 6 }));
-        line.on('mouseout', () => line.setStyle({ weight: 4 }));
-        this.routeLines.set(id, line);
+        const casing = L.polyline(path, casingStyle).addTo(this.map!);
+        const main = L.polyline(path, mainStyle).addTo(this.map!);
+        main.bindTooltip(tip, { sticky: true });
+        (main as any)._junctionId = r.junction_id;
+        main.on('click', () => this.selectJunction(this.junctionDataById.get(r.junction_id) || r));
+        this.routeLines.set(id, { casing, main });
       }
     });
 
     // Remove lines for routes that no longer exist
-    this.routeLines.forEach((line, id) => {
+    this.routeLines.forEach((group, id) => {
       if (!live.has(id)) {
-        this.map!.removeLayer(line);
+        this.map!.removeLayer(group.casing);
+        this.map!.removeLayer(group.main);
         this.routeLines.delete(id);
       }
     });
 
     this.applyChipFilters();
+  }
+
+  // Keep ribbon width matched to the road as the user zooms.
+  private refreshLineWeights() {
+    const w = this.lineWeights();
+    this.routeLines.forEach(group => {
+      group.casing.setStyle({ weight: w.casing });
+      group.main.setStyle({ weight: w.main });
+    });
   }
 
   renderOfficerMarkers(officers: any[]) {
