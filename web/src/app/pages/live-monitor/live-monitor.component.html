@@ -112,6 +112,16 @@
   <div class="lm-map">
     <div #leafletEl class="lm-leaflet-el"></div>
 
+    <!-- Shown only when environment.googleMapsKey is empty/invalid -->
+    <div class="lm-map-nokey" *ngIf="mapKeyMissing">
+      <i class="bi bi-key"></i>
+      <div class="lm-map-nokey-title">Google Maps key needed</div>
+      <div class="lm-map-nokey-sub">
+        Add your browser key to <code>environment.ts → googleMapsKey</code><br>
+        and enable “Maps JavaScript API” in Google Cloud Console.
+      </div>
+    </div>
+
     <!-- Google-Maps-style basemap control: thumb tap flips Map ↔ Satellite,
          the chevron expands the layer chips to the side (collapsed default). -->
     <div class="lm-basemap" *ngIf="mapReady" [class.expanded]="layersExpanded">

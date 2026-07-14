@@ -5,10 +5,12 @@ import { OfficerService } from '../../core/services/officer.service';
 import { JunctionService } from '../../core/services/junction.service';
 import { SocketService } from '../../core/services/socket.service';
 import { JunctionRouteService } from '../../core/services/junction-route.service';
-import { UiService } from '../../core/services/ui.service';
+import { environment } from '../../environments/environment';
 import { Subscription } from 'rxjs';
-import { skip } from 'rxjs/operators';
-import * as L from 'leaflet';
+
+// Google Maps JS API is loaded at runtime (see loadGoogleScript) — no typings
+// package needed, everything goes through this ambient handle.
+declare const google: any;
 
 @Component({
   selector: 'app-live-monitor',
@@ -57,23 +59,22 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   openChip: 'district' | 'subDivision' | 'section' | 'minDelay' | null = null;
   chipPanelPos = { top: 0, left: 0 };
 
-  // ── Leaflet map ─────────────────────────────────────────────────────
+  // ── Google Map (real Google engine + live TrafficLayer) ──────────────
   @ViewChild('leafletEl') leafletEl?: ElementRef<HTMLDivElement>;
   mapReady = false;
+  mapKeyMissing = false;
   selectedJunctionId: number | null = null;
   panelCollapsed = false;
   layersExpanded = false; // Google-style: chips row hidden until thumb's expand tap
   baseLayer: 'map' | 'satellite' | 'terrain' | 'dark' = 'map';
-  private map?: L.Map;
-  private baseLayers: Partial<Record<'map' | 'satellite' | 'terrain' | 'dark', L.TileLayer>> = {};
-  private satLabels?: L.TileLayer;
-  private junctionMarkers = new Map<number, L.Marker>();
+  private map: any;
+  private trafficLayer: any;
+  private infoWindow: any;
+  private junctionMarkers = new Map<number, any>();
   private junctionDataById = new Map<number, any>();
   private junctionNumberById = new Map<number, number>();
   private nextJunctionNumber = 1;
-  private officerMarkers = new Map<number, L.Marker>();
-  // One road-ribbon per route: colored fill + slightly darker edge.
-  private routeLines = new Map<number, { casing: L.Polyline; main: L.Polyline }>();
+  private officerMarkers = new Map<number, any>();
 
   private subs: Subscription[] = [];
 
@@ -83,7 +84,6 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     private junctionSvc: JunctionService,
     private socket: SocketService,
     private routeSvc: JunctionRouteService,
-    private ui: UiService,
     private http: HttpClient,
   ) {}
 
@@ -107,10 +107,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
             this.updateJunctionPin(u);
           }
         });
-        if (routeChanged) {
-          this.renderJunctionPins(this.pinSourceData);
-          this.renderRouteLines(this.routeTrafficData);
-        }
+        if (routeChanged) this.renderJunctionPins(this.pinSourceData);
         this.touchLastUpdate(updates);
       }),
       this.socket.officerLocations$.subscribe(loc => {
@@ -122,18 +119,12 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
         if (this.heavyAlerts.length > 20) this.heavyAlerts.pop();
       }),
       this.socket.trafficCleared$.subscribe(() => this.load()),
-      // Sidebar collapse changes the map container's width — re-measure
-      // Leaflet once the 0.25s CSS width transition has finished.
-      this.ui.sidebarCollapsed$.pipe(skip(1)).subscribe(() => {
-        setTimeout(() => this.map?.invalidateSize({ animate: true }), 280);
-      }),
     );
   }
 
   ngAfterViewInit() {
     // Defer to the next microtask so the map container has committed to the
-    // DOM before Leaflet measures it, and setting mapReady doesn't trigger
-    // NG0100 (ExpressionChangedAfterItHasBeenCheckedError) in dev mode.
+    // DOM, and setting mapReady doesn't trigger NG0100 in dev mode.
     Promise.resolve().then(() => this.initMap());
   }
 
@@ -148,10 +139,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     this.routeSvc.getLatestTraffic().subscribe(data => {
       this.routeTrafficData = data;
       this.touchLastUpdate(data);
-      if (data.length > 0) {
-        this.renderJunctionPins(this.pinSourceData);
-        this.renderRouteLines(data);
-      }
+      if (data.length > 0) this.renderJunctionPins(this.pinSourceData);
     });
     this.officerSvc.getLiveLocations().subscribe(data => {
       this.liveOfficers = data;
@@ -181,10 +169,12 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // Map shell is [hidden] while other tabs are active — after re-showing,
-  // Leaflet must re-measure the container or tiles/pins render misaligned.
+  // nudge Google Maps to re-measure its container.
   showMapTab() {
     this.activeTab = 'map';
-    setTimeout(() => this.map?.invalidateSize(), 50);
+    setTimeout(() => {
+      if (this.map && (window as any).google) google.maps.event.trigger(this.map, 'resize');
+    }, 50);
   }
 
   acknowledgeAlert(i: number) { this.heavyAlerts[i].acknowledged = true; }
@@ -341,18 +331,9 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     const visibleIds = new Set(this.pinSourceData.filter(d => this.passesChipFilters(d)).map(d => d.junction_id));
     this.junctionMarkers.forEach((marker, id) => {
       const shouldShow = visibleIds.has(id);
-      const onMap = this.map!.hasLayer(marker);
-      if (shouldShow && !onMap) marker.addTo(this.map!);
-      if (!shouldShow && onMap) this.map!.removeLayer(marker);
-    });
-    // Traffic lines follow their junction's visibility
-    this.routeLines.forEach(group => {
-      const shouldShow = visibleIds.has((group.main as any)._junctionId);
-      [group.casing, group.main].forEach(layer => {
-        const onMap = this.map!.hasLayer(layer);
-        if (shouldShow && !onMap) layer.addTo(this.map!);
-        if (!shouldShow && onMap) this.map!.removeLayer(layer);
-      });
+      const onMap = marker.getMap() != null;
+      if (shouldShow && !onMap) marker.setMap(this.map);
+      if (!shouldShow && onMap) marker.setMap(null);
     });
   }
 
@@ -374,58 +355,78 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
 
   getColor(level: string) { return this.getCongestionColor(level); }
 
-  // ── Map: single Leaflet engine, Google-Maps-style base layers ─────────
-  // All tiles are free with attribution — no Google billing:
-  //   Default   → CARTO Voyager (clean, Google-like light cartography)
-  //   Satellite → Esri World Imagery + Esri place labels
-  //   Terrain   → OpenTopoMap
-  //   Dark      → CARTO Dark Matter (control-room night mode)
-  initMap() {
+  // ── Map: REAL Google Maps engine with the live TrafficLayer ───────────
+  // Every road in the city gets Google's own live traffic colors — the
+  // exact same view as maps.google.com. Uses the Maps JavaScript API
+  // (10,000 free map loads/month; a control-room dashboard stays far
+  // under that).
+  private loadGoogleScript(key: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if ((window as any).google?.maps) return resolve();
+      (window as any).__gmapsReady = () => resolve();
+      const s = document.createElement('script');
+      s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&v=weekly&loading=async&callback=__gmapsReady`;
+      s.async = true;
+      s.onerror = () => reject(new Error('Google Maps script failed to load'));
+      document.head.appendChild(s);
+    });
+  }
+
+  // Google's night-mode styling for the Dark layer.
+  private static readonly NIGHT_STYLE = [
+    { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
+    { elementType: 'labels.text.stroke', stylers: [{ color: '#242f3e' }] },
+    { elementType: 'labels.text.fill', stylers: [{ color: '#746855' }] },
+    { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
+    { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
+    { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#263c3f' }] },
+    { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#6b9a76' }] },
+    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#38414e' }] },
+    { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#212a37' }] },
+    { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#9ca5b3' }] },
+    { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#746855' }] },
+    { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#1f2835' }] },
+    { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#f3d19c' }] },
+    { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#2f3948' }] },
+    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#17263c' }] },
+    { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#515c6d' }] },
+  ];
+
+  async initMap() {
     if (!this.leafletEl) return;
-    // City-locked map: opens on Chennai and cannot be panned away to the
-    // rest of the country/world. Once junction pins load, the lock tightens
-    // to exactly the junctions' own area (see renderJunctionPins).
-    const chennai = L.latLngBounds([12.75, 79.90], [13.35, 80.40]);
-    this.map = L.map(this.leafletEl.nativeElement, {
-      zoomControl: false,
-      maxBounds: chennai,
-      maxBoundsViscosity: 1.0, // hard wall — no dragging outside the city
-    }).fitBounds(chennai);
-    L.control.zoom({ position: 'bottomright' }).addTo(this.map);
+    const key = environment.googleMapsKey;
+    if (!key) {
+      this.mapKeyMissing = true;
+      return;
+    }
+    try {
+      await this.loadGoogleScript(key);
+    } catch {
+      this.mapKeyMissing = true;
+      return;
+    }
 
-    // Zoom-out limit = Chennai exactly filling the screen. One more zoom-out
-    // step is impossible — the full-city view IS the widest view.
-    this.map.setMinZoom(this.map.getBoundsZoom(chennai));
+    // City-locked: opens on Chennai, cannot pan/zoom away from the city.
+    this.map = new google.maps.Map(this.leafletEl.nativeElement, {
+      center: { lat: 13.0475, lng: 80.2090 },
+      zoom: 11,
+      minZoom: 11,
+      restriction: {
+        latLngBounds: { north: 13.35, south: 12.75, east: 80.40, west: 79.90 },
+        strictBounds: true,
+      },
+      disableDefaultUI: true,
+      zoomControl: true,
+      zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_BOTTOM },
+      clickableIcons: false,
+      mapTypeId: 'roadmap',
+    });
 
-    // Ribbon panes (edge below fill), both under markers (zIndex 600) so
-    // pins stay clickable on top. Widths re-match the road on every zoom.
-    this.map.createPane('lmCasing').style.zIndex = '402';
-    this.map.createPane('lmMain').style.zIndex = '403';
-    this.map.on('zoomend', () => this.refreshLineWeights());
+    // THE feature: Google's own live traffic on every road in the city.
+    this.trafficLayer = new google.maps.TrafficLayer();
+    this.trafficLayer.setMap(this.map);
 
-    this.baseLayers = {
-      map: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap contributors © CARTO',
-        maxZoom: 19,
-      }),
-      satellite: L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        { attribution: 'Esri, Maxar, Earthstar Geographics', maxZoom: 19 },
-      ),
-      terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors, SRTM | © OpenTopoMap (CC-BY-SA)',
-        maxZoom: 17,
-      }),
-      dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap contributors © CARTO',
-        maxZoom: 19,
-      }),
-    };
-    this.satLabels = L.tileLayer(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-      { attribution: 'Esri', maxZoom: 19 },
-    );
-    this.baseLayers.map!.addTo(this.map);
+    this.infoWindow = new google.maps.InfoWindow();
 
     // "Cut out" Chennai: mask everything outside the district boundary and
     // draw the boundary outline — only the city itself shows map detail.
@@ -437,49 +438,62 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     this.mapReady = true;
 
     if (this.displayData.length) this.renderJunctionPins(this.pinSourceData);
-    if (this.hasRoutes) this.renderRouteLines(this.routeTrafficData);
     if (this.liveOfficers.length) this.renderOfficerMarkers(this.liveOfficers);
   }
 
   // ── Chennai cutout mask ────────────────────────────────────────────
   // One giant polygon covering the whole world, with the Chennai district
-  // boundary as a hole — so tiles are visible only inside the city shape.
-  private cityMask?: L.Polygon;
-  private cityOutline?: L.Polyline;
+  // boundary as a hole (even-odd fill) — map detail only inside the city.
+  private cityMask: any;
+  private cityOutline: any;
 
   private maskFill(): string {
     return this.baseLayer === 'dark' ? '#14161c' : '#e9edf2';
   }
 
   private addCityMask(rings: [number, number][][]) {
-    if (!this.map) return;
-    const world: [number, number][] = [[-89, -179], [-89, 179], [89, 179], [89, -179]];
-    this.cityMask = L.polygon([world, ...rings], {
+    if (!this.map || !(window as any).google) return;
+    const world = [
+      { lat: -89, lng: -179 }, { lat: -89, lng: 179 },
+      { lat: 89, lng: 179 }, { lat: 89, lng: -179 },
+    ];
+    const ringPaths = rings.map(ring => ring.map(([lat, lng]) => ({ lat, lng })));
+    this.cityMask = new google.maps.Polygon({
+      map: this.map,
+      paths: [world, ...ringPaths],
       fillColor: this.maskFill(),
       fillOpacity: 1,
-      stroke: false,
-      interactive: false,
-    }).addTo(this.map);
-    this.cityOutline = L.polyline(rings, {
-      color: '#1565c0',
-      weight: 2,
-      opacity: 0.7,
-      interactive: false,
-    }).addTo(this.map);
+      strokeWeight: 0,
+      clickable: false,
+    });
+    this.cityOutline = new google.maps.Polyline({
+      map: this.map,
+      path: ringPaths[0],
+      strokeColor: '#1565c0',
+      strokeWeight: 2,
+      strokeOpacity: 0.7,
+      clickable: false,
+    });
   }
 
   setBaseLayer(layer: 'map' | 'satellite' | 'terrain' | 'dark') {
     if (!this.map || layer === this.baseLayer) return;
-    const prev = this.baseLayers[this.baseLayer];
-    if (prev) this.map.removeLayer(prev);
-    if (this.satLabels) this.map.removeLayer(this.satLabels);
-
     this.baseLayer = layer;
-    this.baseLayers[layer]?.addTo(this.map);
-    if (layer === 'satellite') this.satLabels?.addTo(this.map);
-
+    switch (layer) {
+      case 'satellite':
+        this.map.setOptions({ mapTypeId: 'hybrid', styles: [] });
+        break;
+      case 'terrain':
+        this.map.setOptions({ mapTypeId: 'terrain', styles: [] });
+        break;
+      case 'dark':
+        this.map.setOptions({ mapTypeId: 'roadmap', styles: LiveMonitorComponent.NIGHT_STYLE });
+        break;
+      default:
+        this.map.setOptions({ mapTypeId: 'roadmap', styles: [] });
+    }
     // Mask surface matches the layer's mood (dark layer → dark surround)
-    this.cityMask?.setStyle({ fillColor: this.maskFill() });
+    this.cityMask?.setOptions({ fillColor: this.maskFill() });
   }
 
   // The big thumb always reflects the CURRENTLY selected layer.
@@ -501,15 +515,13 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Google's "my location" equivalent — re-fit the view around every pin.
   fitAllPins() {
-    if (!this.map || this.junctionMarkers.size === 0) return;
-    const pts: [number, number][] = [];
+    if (!this.map || this.junctionMarkers.size === 0 || !(window as any).google) return;
+    const bounds = new google.maps.LatLngBounds();
+    let any = false;
     this.junctionMarkers.forEach(m => {
-      if (this.map!.hasLayer(m)) {
-        const ll = m.getLatLng();
-        pts.push([ll.lat, ll.lng]);
-      }
+      if (m.getMap() != null) { bounds.extend(m.getPosition()); any = true; }
     });
-    if (pts.length) this.map.fitBounds(L.latLngBounds(pts), { padding: [60, 60], maxZoom: 15 });
+    if (any) this.map.fitBounds(bounds, 60);
   }
 
   // Stable per-junction display number (01, 02, 03…) — assigned once on
@@ -533,23 +545,19 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  // Teardrop pin icon — color and size both driven by the row's JSON fields
-  // (congestion_level for color, delay_minutes for size), numbered so pins
-  // can be matched back to their row in the Traffic Delay Monitor panel.
-  // Selected pins get a pulsing halo + pop-in "lit" state.
-  private pinIcon(d: any): L.DivIcon {
+  // Teardrop pin icon (SVG data URI) — color and size driven by the row's
+  // congestion level, numbered so pins match their row in the panel.
+  // Selected pins get a static glow ring + grow slightly.
+  private pinIcon(d: any): any {
     const color = this.getCongestionColor(d.congestion_level);
     const isSelected = this.selectedJunctionId === d.junction_id;
     const label = String(this.getJunctionNumber(d.junction_id)).padStart(2, '0');
     const { w: baseW, h: baseH } = this.pinSizeForLevel(d.congestion_level);
-    const selMult = isSelected ? 1.15 : 1;
+    const selMult = isSelected ? 1.2 : 1;
     const w = Math.round(baseW * selMult);
     const h = Math.round(baseH * selMult);
     const glow = isSelected
-      ? `<circle cx="13" cy="13" r="12" fill="${color}" opacity="0.35">
-           <animate attributeName="r" values="10;19;10" dur="1.4s" repeatCount="indefinite"/>
-           <animate attributeName="opacity" values="0.4;0.05;0.4" dur="1.4s" repeatCount="indefinite"/>
-         </circle>`
+      ? `<circle cx="13" cy="13" r="12" fill="${color}" opacity="0.3"/>`
       : '';
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 26 36" overflow="visible">
         ${glow}
@@ -557,25 +565,34 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
         <circle cx="13" cy="13" r="7.5" fill="#ffffff"/>
         <text x="13" y="16" font-size="7.5" font-family="Arial" font-weight="700" fill="${color}" text-anchor="middle">${label}</text>
       </svg>`;
-    return L.divIcon({
-      html: svg,
-      className: 'lm-pin-icon' + (isSelected ? ' lm-pin-selected' : ''),
-      iconSize: [w, h],
-      iconAnchor: [w / 2, h],
-      popupAnchor: [0, -h + 6],
-    });
+    return {
+      url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+      scaledSize: new google.maps.Size(w, h),
+      anchor: new google.maps.Point(w / 2, h),
+      labelOrigin: new google.maps.Point(w / 2, -10),
+    };
+  }
+
+  private markerLabel(d: any): any {
+    return {
+      text: d.short_name || d.junction_name || '',
+      className: 'junction-glabel',
+      color: '#1565c0',
+      fontSize: '11px',
+      fontWeight: '700',
+    };
   }
 
   private didFitBounds = false;
 
   renderJunctionPins(data: any[]) {
-    if (!this.map) return;
+    if (!this.map || !(window as any).google) return;
 
     // Drop markers for junctions no longer in the data (e.g. deleted ones)
     const liveIds = new Set(data.map(d => d.junction_id));
     this.junctionMarkers.forEach((marker, id) => {
       if (!liveIds.has(id)) {
-        this.map!.removeLayer(marker);
+        marker.setMap(null);
         this.junctionMarkers.delete(id);
         this.junctionDataById.delete(id);
       }
@@ -583,32 +600,30 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
 
     data.forEach(d => {
       this.junctionDataById.set(d.junction_id, d);
-      const icon = this.pinIcon(d);
       if (this.junctionMarkers.has(d.junction_id)) {
         const m = this.junctionMarkers.get(d.junction_id)!;
-        m.setIcon(icon);
-        m.setLatLng([d.lat, d.lng]);
-        m.setPopupContent(this.junctionPopup(d));
+        m.setIcon(this.pinIcon(d));
+        m.setPosition({ lat: +d.lat, lng: +d.lng });
+        m.setLabel(this.markerLabel(d));
       } else {
-        const marker = L.marker([d.lat, d.lng], { icon }).addTo(this.map!);
-        marker.bindTooltip(d.short_name || d.junction_name, {
-          permanent: true, direction: 'top',
-          offset: [0, -34],
-          className: 'junction-web-label',
-          opacity: 1,
+        const marker = new google.maps.Marker({
+          map: this.map,
+          position: { lat: +d.lat, lng: +d.lng },
+          icon: this.pinIcon(d),
+          label: this.markerLabel(d),
+          title: d.junction_name,
         });
-        marker.bindPopup(this.junctionPopup(d));
-        marker.on('click', () => this.selectJunction(this.junctionDataById.get(d.junction_id) || d));
+        marker.addListener('click', () => this.selectJunction(this.junctionDataById.get(d.junction_id) || d));
         this.junctionMarkers.set(d.junction_id, marker);
       }
     });
 
     // Fit the view once on first render; later refreshes keep the user's
-    // view. Pan/zoom limits stay city-wide: zoom-out floor is the full
-    // Chennai view set in initMap.
+    // view. Pan/zoom limits stay city-wide (restriction in initMap).
     if (data.length > 0 && !this.didFitBounds) {
-      const bounds = L.latLngBounds(data.map(d => [d.lat, d.lng] as [number, number]));
-      this.map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
+      const bounds = new google.maps.LatLngBounds();
+      data.forEach(d => bounds.extend({ lat: +d.lat, lng: +d.lng }));
+      this.map.fitBounds(bounds, 60);
       this.didFitBounds = true;
     }
 
@@ -620,12 +635,11 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     if (marker) {
       this.junctionDataById.set(u.junction_id, u);
       marker.setIcon(this.pinIcon(u));
-      marker.setPopupContent(this.junctionPopup(u));
     }
   }
 
   // Clicking a row in the Traffic Delay Monitor panel (or a pin itself) pans/
-  // zooms the map to that junction and lights up its pin with a pulsing halo.
+  // zooms the map to that junction and lights up its pin.
   selectJunction(d: any) {
     const id = d.junction_id;
     const prevId = this.selectedJunctionId;
@@ -636,8 +650,11 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const marker = this.junctionMarkers.get(id);
     if (marker && this.map) {
-      this.map.flyTo(marker.getLatLng(), Math.max(this.map.getZoom(), 16), { duration: 0.6 });
-      marker.openPopup();
+      this.map.panTo(marker.getPosition());
+      if (this.map.getZoom() < 16) this.map.setZoom(16);
+      const data = this.junctionDataById.get(id) || d;
+      this.infoWindow.setContent(this.junctionPopup(data));
+      this.infoWindow.open({ map: this.map, anchor: marker });
     }
   }
 
@@ -685,134 +702,41 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     `;
   }
 
-  // ── Traffic lines along the real roads (Google-Maps traffic style) ──
-  // Google's encoded polyline → list of lat/lng points. Standard algorithm,
-  // no library needed.
-  private decodePolyline(encoded: string): [number, number][] {
-    const pts: [number, number][] = [];
-    let index = 0, lat = 0, lng = 0;
-    while (index < encoded.length) {
-      let b, shift = 0, result = 0;
-      do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
-      lat += (result & 1) ? ~(result >> 1) : (result >> 1);
-      shift = 0; result = 0;
-      do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
-      lng += (result & 1) ? ~(result >> 1) : (result >> 1);
-      pts.push([lat / 1e5, lng / 1e5]);
-    }
-    return pts;
-  }
-
-  // Darker shade of a hex color — used for the ribbon's edge.
-  private shade(hex: string, f: number): string {
-    const n = parseInt(hex.slice(1), 16);
-    const r = Math.round(((n >> 16) & 255) * f);
-    const g = Math.round(((n >> 8) & 255) * f);
-    const b = Math.round((n & 255) * f);
-    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
-  }
-
-  // Road-matched ribbon widths — like Google, the traffic ribbon grows with
-  // zoom so it always fills the drawn road instead of floating over it.
-  private lineWeights(): { casing: number; main: number } {
-    const z = this.map?.getZoom() ?? 13;
-    const main =
-      z >= 18 ? 14 :
-      z >= 17 ? 11 :
-      z >= 16 ? 9 :
-      z >= 15 ? 7 :
-      z >= 14 ? 5.5 :
-      z >= 13 ? 4.5 : 3.5;
-    return { casing: main + 3, main };
-  }
-
-  // Draws each route exactly ON the road (no side offset): a colored
-  // ribbon with a slightly darker edge, exactly Google Maps' live-traffic
-  // look. Ribbon width follows zoom (see lineWeights). Real road shape
-  // when the polyline is stored; dashed straight fallback until the first
-  // Google refresh saves one.
-  private renderRouteLines(rows: any[]) {
-    if (!this.map) return;
-    const live = new Set<number>();
-    const w = this.lineWeights();
-
-    rows.forEach(r => {
-      const id = r.route_id ?? r.id;
-      if (id == null) return;
-      live.add(id);
-
-      let path: [number, number][] | null = null;
-      if (r.polyline) path = this.decodePolyline(r.polyline);
-      else if (r.origin_lat != null && r.dest_lat != null) {
-        path = [[+r.origin_lat, +r.origin_lng], [+r.dest_lat, +r.dest_lng]];
-      }
-      if (!path || path.length < 2) return;
-
-      const color = this.getCongestionColor(r.congestion_level);
-      const casingStyle: L.PolylineOptions = {
-        pane: 'lmCasing', color: this.shade(color, 0.72), weight: w.casing, opacity: 1,
-        lineCap: 'round', lineJoin: 'round', interactive: false,
-        dashArray: r.polyline ? undefined : '6 10',
-      };
-      const mainStyle: L.PolylineOptions = {
-        pane: 'lmMain', color, weight: w.main, opacity: 1,
-        lineCap: 'round', lineJoin: 'round',
-        dashArray: r.polyline ? undefined : '6 10',
-      };
-      const tip = `${r.coming_from || r.junction_name} — ${r.delay_minutes}m delay (${r.congestion_level})`;
-
-      const existing = this.routeLines.get(id);
-      if (existing) {
-        existing.casing.setLatLngs(path); existing.casing.setStyle(casingStyle);
-        existing.main.setLatLngs(path); existing.main.setStyle(mainStyle);
-        existing.main.setTooltipContent(tip);
-      } else {
-        const casing = L.polyline(path, casingStyle).addTo(this.map!);
-        const main = L.polyline(path, mainStyle).addTo(this.map!);
-        main.bindTooltip(tip, { sticky: true });
-        (main as any)._junctionId = r.junction_id;
-        main.on('click', () => this.selectJunction(this.junctionDataById.get(r.junction_id) || r));
-        this.routeLines.set(id, { casing, main });
-      }
-    });
-
-    // Remove lines for routes that no longer exist
-    this.routeLines.forEach((group, id) => {
-      if (!live.has(id)) {
-        this.map!.removeLayer(group.casing);
-        this.map!.removeLayer(group.main);
-        this.routeLines.delete(id);
-      }
-    });
-
-    this.applyChipFilters();
-  }
-
-  // Keep ribbon width matched to the road as the user zooms.
-  private refreshLineWeights() {
-    const w = this.lineWeights();
-    this.routeLines.forEach(group => {
-      group.casing.setStyle({ weight: w.casing });
-      group.main.setStyle({ weight: w.main });
-    });
-  }
-
   renderOfficerMarkers(officers: any[]) {
     officers.forEach(o => this.updateOfficerMarker(o));
   }
 
+  private officerIcon(o: any): any {
+    const initials = (o.badge_number || 'PO').slice(-2);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30">
+        <circle cx="15" cy="15" r="13" fill="#1976d2" stroke="#ffffff" stroke-width="2"/>
+        <text x="15" y="19" font-size="10" font-family="Arial" font-weight="700" fill="#ffffff" text-anchor="middle">${initials}</text>
+      </svg>`;
+    return {
+      url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+      scaledSize: new google.maps.Size(30, 30),
+      anchor: new google.maps.Point(15, 15),
+    };
+  }
+
   updateOfficerMarker(o: any) {
-    if (!this.map) return;
-    const icon = L.divIcon({
-      html: `<div style="background:#1976d2;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,0.3)">${o.badge_number?.slice(-2) || 'PO'}</div>`,
-      className: '',
-      iconSize: [28, 28], iconAnchor: [14, 14],
-    });
+    if (!this.map || !(window as any).google) return;
+    const pos = { lat: +o.lat, lng: +o.lng };
     if (this.officerMarkers.has(o.officer_id)) {
-      this.officerMarkers.get(o.officer_id)!.setLatLng([o.lat, o.lng]);
+      this.officerMarkers.get(o.officer_id)!.setPosition(pos);
     } else {
-      const marker = L.marker([o.lat, o.lng], { icon }).addTo(this.map);
-      marker.bindPopup(`<div style="font-family:'Segoe UI',Arial,sans-serif"><b>${o.name}</b><br>Badge: ${o.badge_number}<br>Junction: ${o.junction_name || 'En route'}</div>`);
+      const marker = new google.maps.Marker({
+        map: this.map,
+        position: pos,
+        icon: this.officerIcon(o),
+        title: o.name,
+      });
+      marker.addListener('click', () => {
+        this.infoWindow.setContent(
+          `<div style="font-family:'Segoe UI',Arial,sans-serif"><b>${o.name}</b><br>Badge: ${o.badge_number}<br>Junction: ${o.junction_name || 'En route'}</div>`,
+        );
+        this.infoWindow.open({ map: this.map, anchor: marker });
+      });
       this.officerMarkers.set(o.officer_id, marker);
     }
   }
