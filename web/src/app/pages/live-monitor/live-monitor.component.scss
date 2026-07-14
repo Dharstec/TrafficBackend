@@ -490,61 +490,118 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-// ── Layer switcher (Map / Satellite) — Google-Maps-style thumbs,
-// bottom-right above the zoom control. ─────────────────────────────
-.lm-layers {
+// ── Basemap control — Google-Maps flow: big preview thumb (one tap flips
+// Map ↔ Satellite) + a row of layer chips, bottom-left. ─────────────
+.lm-basemap {
   position: absolute;
-  right: 12px;
-  bottom: 112px;
+  left: 14px;
+  bottom: 22px;
   z-index: 500;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: flex-end;
+  gap: 10px;
 }
 
-.lm-layer-btn {
+// Big preview thumbnail — shows the layer you'd switch TO, like Google
+.lm-bm-thumb {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border: 2px solid #fff;
+  border-radius: 12px;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  background: transparent;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+.lm-bm-thumb-img {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+}
+
+.lm-bm-thumb-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 2px 0 3px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.65));
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+// Chip row — Default / Satellite / Terrain / Dark
+.lm-bm-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: rgba(var(--rgb-surface), 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 14px;
+  box-shadow: var(--shadow-md);
+}
+
+.lm-bm-chip {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
   border: none;
   background: transparent;
-  padding: 0;
+  padding: 4px 6px;
+  border-radius: 10px;
   cursor: pointer;
+  transition: background 0.15s ease;
 
-  &:hover .lm-layer-thumb {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-  }
+  &:hover { background: var(--color-surface-alt); }
 
   &.active {
-    .lm-layer-thumb {
+    .lm-bm-icon {
       border-color: var(--g-blue);
-      box-shadow: 0 0 0 2px rgba(var(--rgb-primary), 0.35), var(--shadow-md);
+      box-shadow: 0 0 0 2px rgba(var(--rgb-primary), 0.3);
     }
-    .lm-layer-name {
-      color: var(--g-blue-dark);
-      font-weight: 700;
-    }
+    .lm-bm-name { color: var(--g-blue-dark); font-weight: 700; }
   }
 }
 
-.lm-layer-thumb {
-  width: 46px;
-  height: 46px;
-  border-radius: 10px;
-  border: 2px solid rgba(255, 255, 255, 0.9);
+.lm-bm-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 2px solid transparent;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.05rem;
-  color: #fff;
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  font-size: 0.85rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+.lm-bm-name {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--g-text-secondary);
+}
+
+// Thumbnail palettes (CSS-only previews, no image downloads)
 .lm-thumb-map {
-  background: linear-gradient(135deg, #a8d5a2 0%, #e8e0c9 45%, #9ec9e8 100%);
+  background: linear-gradient(135deg, #cde8c0 0%, #f3efdf 45%, #aacfee 100%);
   color: #33691e;
 }
 
@@ -553,22 +610,46 @@
   color: #d7e8d0;
 }
 
-.lm-layer-name {
-  font-size: 0.62rem;
-  font-weight: 600;
-  color: var(--g-text);
-  background: rgba(var(--rgb-surface), 0.8);
-  backdrop-filter: blur(8px);
-  padding: 1px 7px;
-  border-radius: 8px;
-  box-shadow: var(--shadow-sm);
-  transition: color 0.15s ease;
+.lm-thumb-terrain {
+  background: linear-gradient(135deg, #b7d2a8 0%, #e8dcc2 55%, #cbb891 100%);
+  color: #5d4037;
 }
 
-// ── Legend ─────────────────────────────────────────────────────
+.lm-thumb-dark {
+  background: linear-gradient(135deg, #16181d 0%, #2a2e37 55%, #3a3f4b 100%);
+  color: #9fb6ff;
+}
+
+// Re-center button — sits just above the zoom control, bottom-right
+.lm-fit-btn {
+  position: absolute;
+  right: 12px;
+  bottom: 112px;
+  z-index: 500;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-surface-solid);
+  color: var(--g-text);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  transition: color 0.15s ease, transform 0.15s ease;
+
+  &:hover {
+    color: var(--g-blue);
+    transform: scale(1.05);
+  }
+}
+
+// ── Legend — stacked above the basemap control, bottom-left ────
 .lm-legend {
   position: absolute;
-  bottom: 24px;
+  bottom: 102px;
   left: 14px;
   z-index: 500;
   display: flex;

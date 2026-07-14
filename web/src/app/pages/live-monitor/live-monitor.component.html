@@ -110,17 +110,41 @@
   <div class="lm-map">
     <div #leafletEl class="lm-leaflet-el"></div>
 
-    <!-- Google-Maps-style layer switcher -->
-    <div class="lm-layers" *ngIf="mapReady">
-      <button type="button" class="lm-layer-btn" [class.active]="baseLayer==='map'" (click)="setBaseLayer('map')" title="Default map">
-        <span class="lm-layer-thumb lm-thumb-map"><i class="bi bi-map-fill"></i></span>
-        <span class="lm-layer-name">Map</span>
+    <!-- Google-Maps-style basemap control: big preview thumb flips
+         Map ↔ Satellite; chip row picks any layer. Bottom-left like Google. -->
+    <div class="lm-basemap" *ngIf="mapReady">
+      <button type="button" class="lm-bm-thumb" (click)="toggleQuickLayer()"
+        [title]="baseLayer==='satellite' ? 'Switch to map' : 'Switch to satellite'">
+        <span class="lm-bm-thumb-img" [class.lm-thumb-sat]="baseLayer!=='satellite'" [class.lm-thumb-map]="baseLayer==='satellite'">
+          <i class="bi" [class.bi-globe-americas]="baseLayer!=='satellite'" [class.bi-map-fill]="baseLayer==='satellite'"></i>
+        </span>
+        <span class="lm-bm-thumb-label">{{ baseLayer==='satellite' ? 'Map' : 'Satellite' }}</span>
       </button>
-      <button type="button" class="lm-layer-btn" [class.active]="baseLayer==='satellite'" (click)="setBaseLayer('satellite')" title="Satellite imagery">
-        <span class="lm-layer-thumb lm-thumb-sat"><i class="bi bi-globe-americas"></i></span>
-        <span class="lm-layer-name">Satellite</span>
-      </button>
+
+      <div class="lm-bm-chips">
+        <button type="button" class="lm-bm-chip" [class.active]="baseLayer==='map'" (click)="setBaseLayer('map')">
+          <span class="lm-bm-icon lm-thumb-map"><i class="bi bi-map"></i></span>
+          <span class="lm-bm-name">Default</span>
+        </button>
+        <button type="button" class="lm-bm-chip" [class.active]="baseLayer==='satellite'" (click)="setBaseLayer('satellite')">
+          <span class="lm-bm-icon lm-thumb-sat"><i class="bi bi-globe-americas"></i></span>
+          <span class="lm-bm-name">Satellite</span>
+        </button>
+        <button type="button" class="lm-bm-chip" [class.active]="baseLayer==='terrain'" (click)="setBaseLayer('terrain')">
+          <span class="lm-bm-icon lm-thumb-terrain"><i class="bi bi-image-alt"></i></span>
+          <span class="lm-bm-name">Terrain</span>
+        </button>
+        <button type="button" class="lm-bm-chip" [class.active]="baseLayer==='dark'" (click)="setBaseLayer('dark')">
+          <span class="lm-bm-icon lm-thumb-dark"><i class="bi bi-moon-stars"></i></span>
+          <span class="lm-bm-name">Dark</span>
+        </button>
+      </div>
     </div>
+
+    <!-- Re-center on all pins (Google "my location" spot, above zoom) -->
+    <button type="button" class="lm-fit-btn" *ngIf="mapReady" (click)="fitAllPins()" title="Fit all junctions">
+      <i class="bi bi-crosshair"></i>
+    </button>
 
     <!-- Legend -->
     <div class="lm-legend" *ngIf="mapReady">

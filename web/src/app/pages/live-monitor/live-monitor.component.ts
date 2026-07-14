@@ -59,10 +59,9 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   mapReady = false;
   selectedJunctionId: number | null = null;
   panelCollapsed = false;
-  baseLayer: 'map' | 'satellite' = 'map';
+  baseLayer: 'map' | 'satellite' | 'terrain' | 'dark' = 'map';
   private map?: L.Map;
-  private osmLayer?: L.TileLayer;
-  private satLayer?: L.TileLayer;
+  private baseLayers: Partial<Record<'map' | 'satellite' | 'terrain' | 'dark', L.TileLayer>> = {};
   private satLabels?: L.TileLayer;
   private junctionMarkers = new Map<number, L.Marker>();
   private junctionDataById = new Map<number, any>();
@@ -285,28 +284,41 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
 
   getColor(level: string) { return this.getCongestionColor(level); }
 
-  // ── Map: single Leaflet engine, switchable base layers ────────────────
-  // "Map" = OpenStreetMap (free). "Satellite" = Esri World Imagery + place
-  // labels (also free with attribution) — no Google Maps billing involved.
+  // ── Map: single Leaflet engine, Google-Maps-style base layers ─────────
+  // All tiles are free with attribution — no Google billing:
+  //   Default   → CARTO Voyager (clean, Google-like light cartography)
+  //   Satellite → Esri World Imagery + Esri place labels
+  //   Terrain   → OpenTopoMap
+  //   Dark      → CARTO Dark Matter (control-room night mode)
   initMap() {
     if (!this.leafletEl) return;
     this.map = L.map(this.leafletEl.nativeElement, { zoomControl: false })
       .setView([11.0168, 76.9558], 13);
     L.control.zoom({ position: 'bottomright' }).addTo(this.map);
 
-    this.osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 19,
-    }).addTo(this.map);
-
-    this.satLayer = L.tileLayer(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      { attribution: 'Esri, Maxar, Earthstar Geographics', maxZoom: 19 },
-    );
+    this.baseLayers = {
+      map: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '© OpenStreetMap contributors © CARTO',
+        maxZoom: 19,
+      }),
+      satellite: L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        { attribution: 'Esri, Maxar, Earthstar Geographics', maxZoom: 19 },
+      ),
+      terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors, SRTM | © OpenTopoMap (CC-BY-SA)',
+        maxZoom: 17,
+      }),
+      dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© OpenStreetMap contributors © CARTO',
+        maxZoom: 19,
+      }),
+    };
     this.satLabels = L.tileLayer(
       'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
       { attribution: 'Esri', maxZoom: 19 },
     );
+    this.baseLayers.map!.addTo(this.map);
 
     this.mapReady = true;
 
@@ -318,18 +330,33 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.liveOfficers.length) this.renderOfficerMarkers(this.liveOfficers);
   }
 
-  setBaseLayer(layer: 'map' | 'satellite') {
+  setBaseLayer(layer: 'map' | 'satellite' | 'terrain' | 'dark') {
     if (!this.map || layer === this.baseLayer) return;
+    const prev = this.baseLayers[this.baseLayer];
+    if (prev) this.map.removeLayer(prev);
+    if (this.satLabels) this.map.removeLayer(this.satLabels);
+
     this.baseLayer = layer;
-    if (layer === 'satellite') {
-      if (this.osmLayer) this.map.removeLayer(this.osmLayer);
-      this.satLayer?.addTo(this.map);
-      this.satLabels?.addTo(this.map);
-    } else {
-      if (this.satLayer) this.map.removeLayer(this.satLayer);
-      if (this.satLabels) this.map.removeLayer(this.satLabels);
-      this.osmLayer?.addTo(this.map);
-    }
+    this.baseLayers[layer]?.addTo(this.map);
+    if (layer === 'satellite') this.satLabels?.addTo(this.map);
+  }
+
+  // Big preview thumb (Google Maps behavior): one tap flips Map ↔ Satellite.
+  toggleQuickLayer() {
+    this.setBaseLayer(this.baseLayer === 'satellite' ? 'map' : 'satellite');
+  }
+
+  // Google's "my location" equivalent — re-fit the view around every pin.
+  fitAllPins() {
+    if (!this.map || this.junctionMarkers.size === 0) return;
+    const pts: [number, number][] = [];
+    this.junctionMarkers.forEach(m => {
+      if (this.map!.hasLayer(m)) {
+        const ll = m.getLatLng();
+        pts.push([ll.lat, ll.lng]);
+      }
+    });
+    if (pts.length) this.map.fitBounds(L.latLngBounds(pts), { padding: [60, 60], maxZoom: 15 });
   }
 
   // Stable per-junction display number (01, 02, 03…) — assigned once on
