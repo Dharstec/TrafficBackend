@@ -1,4 +1,5 @@
 import { Component, OnInit, OnDestroy, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { TrafficService } from '../../core/services/traffic.service';
 import { OfficerService } from '../../core/services/officer.service';
 import { JunctionService } from '../../core/services/junction.service';
@@ -81,6 +82,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     private socket: SocketService,
     private routeSvc: JunctionRouteService,
     private ui: UiService,
+    private http: HttpClient,
   ) {}
 
   ngOnInit() {
@@ -399,10 +401,44 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     );
     this.baseLayers.map!.addTo(this.map);
 
+    // "Cut out" Chennai: mask everything outside the district boundary and
+    // draw the boundary outline — only the city itself shows map detail.
+    this.http.get<[number, number][][]>('assets/chennai-boundary.json').subscribe({
+      next: rings => this.addCityMask(rings),
+      error: () => {}, // boundary file missing — map still works, just unmasked
+    });
+
     this.mapReady = true;
 
     if (this.displayData.length) this.renderJunctionPins(this.pinSourceData);
     if (this.liveOfficers.length) this.renderOfficerMarkers(this.liveOfficers);
+  }
+
+  // ── Chennai cutout mask ────────────────────────────────────────────
+  // One giant polygon covering the whole world, with the Chennai district
+  // boundary as a hole — so tiles are visible only inside the city shape.
+  private cityMask?: L.Polygon;
+  private cityOutline?: L.Polyline;
+
+  private maskFill(): string {
+    return this.baseLayer === 'dark' ? '#14161c' : '#e9edf2';
+  }
+
+  private addCityMask(rings: [number, number][][]) {
+    if (!this.map) return;
+    const world: [number, number][] = [[-89, -179], [-89, 179], [89, 179], [89, -179]];
+    this.cityMask = L.polygon([world, ...rings], {
+      fillColor: this.maskFill(),
+      fillOpacity: 1,
+      stroke: false,
+      interactive: false,
+    }).addTo(this.map);
+    this.cityOutline = L.polyline(rings, {
+      color: '#1565c0',
+      weight: 2,
+      opacity: 0.7,
+      interactive: false,
+    }).addTo(this.map);
   }
 
   setBaseLayer(layer: 'map' | 'satellite' | 'terrain' | 'dark') {
@@ -414,6 +450,9 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     this.baseLayer = layer;
     this.baseLayers[layer]?.addTo(this.map);
     if (layer === 'satellite') this.satLabels?.addTo(this.map);
+
+    // Mask surface matches the layer's mood (dark layer → dark surround)
+    this.cityMask?.setStyle({ fillColor: this.maskFill() });
   }
 
   // The big thumb always reflects the CURRENTLY selected layer.
