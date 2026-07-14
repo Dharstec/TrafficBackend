@@ -150,15 +150,6 @@ body.sidebar-collapsed .main-content {
   }
 }
 
-/* Junction name labels on the Google map (MarkerLabel className) */
-.junction-glabel {
-  background: rgba(255, 255, 255, 0.95);
-  padding: 2px 8px;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.18);
-  white-space: nowrap;
-}
-
 /* Junction name labels on web map */
 .junction-web-label {
   background: rgba(255, 255, 255, 0.95) !important;
