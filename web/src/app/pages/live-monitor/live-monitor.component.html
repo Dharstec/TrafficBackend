@@ -112,9 +112,9 @@
   <div class="lm-map">
     <div #leafletEl class="lm-leaflet-el"></div>
 
-    <!-- Google-Maps-style basemap control: big preview thumb flips
-         Map ↔ Satellite; chip row picks any layer. Bottom-left like Google. -->
-    <div class="lm-basemap" *ngIf="mapReady">
+    <!-- Google-Maps-style basemap control: thumb tap flips Map ↔ Satellite,
+         the chevron expands the layer chips to the side (collapsed default). -->
+    <div class="lm-basemap" *ngIf="mapReady" [class.expanded]="layersExpanded">
       <button type="button" class="lm-bm-thumb" (click)="toggleQuickLayer()"
         [title]="baseLayer==='satellite' ? 'Switch to map' : 'Switch to satellite'">
         <span class="lm-bm-thumb-img" [class.lm-thumb-sat]="baseLayer!=='satellite'" [class.lm-thumb-map]="baseLayer==='satellite'">
@@ -123,20 +123,25 @@
         <span class="lm-bm-thumb-label">{{ baseLayer==='satellite' ? 'Map' : 'Satellite' }}</span>
       </button>
 
-      <div class="lm-bm-chips">
-        <button type="button" class="lm-bm-chip" [class.active]="baseLayer==='map'" (click)="setBaseLayer('map')">
+      <button type="button" class="lm-bm-expand" (click)="layersExpanded = !layersExpanded"
+        [title]="layersExpanded ? 'Hide layers' : 'More layers'">
+        <i class="bi" [class.bi-chevron-right]="!layersExpanded" [class.bi-chevron-left]="layersExpanded"></i>
+      </button>
+
+      <div class="lm-bm-chips" *ngIf="layersExpanded">
+        <button type="button" class="lm-bm-chip" [class.active]="baseLayer==='map'" (click)="chooseLayer('map')">
           <span class="lm-bm-icon lm-thumb-map"><i class="bi bi-map"></i></span>
           <span class="lm-bm-name">Default</span>
         </button>
-        <button type="button" class="lm-bm-chip" [class.active]="baseLayer==='satellite'" (click)="setBaseLayer('satellite')">
+        <button type="button" class="lm-bm-chip" [class.active]="baseLayer==='satellite'" (click)="chooseLayer('satellite')">
           <span class="lm-bm-icon lm-thumb-sat"><i class="bi bi-globe-americas"></i></span>
           <span class="lm-bm-name">Satellite</span>
         </button>
-        <button type="button" class="lm-bm-chip" [class.active]="baseLayer==='terrain'" (click)="setBaseLayer('terrain')">
+        <button type="button" class="lm-bm-chip" [class.active]="baseLayer==='terrain'" (click)="chooseLayer('terrain')">
           <span class="lm-bm-icon lm-thumb-terrain"><i class="bi bi-image-alt"></i></span>
           <span class="lm-bm-name">Terrain</span>
         </button>
-        <button type="button" class="lm-bm-chip" [class.active]="baseLayer==='dark'" (click)="setBaseLayer('dark')">
+        <button type="button" class="lm-bm-chip" [class.active]="baseLayer==='dark'" (click)="chooseLayer('dark')">
           <span class="lm-bm-icon lm-thumb-dark"><i class="bi bi-moon-stars"></i></span>
           <span class="lm-bm-name">Dark</span>
         </button>
@@ -154,15 +159,15 @@
         <div class="lm-legend-item"><span class="lm-legend-dot" style="background:#4caf50"></span>Usual</div>
         <div class="lm-legend-item"><span class="lm-legend-dot" style="background:#ff9800"></span>Normal</div>
         <div class="lm-legend-item"><span class="lm-legend-dot" style="background:#f44336"></span>Intermediate</div>
-        <div class="lm-legend-item"><span class="lm-legend-dot" style="background:#7b1fa2"></span>Heavy</div>
+        <div class="lm-legend-item"><span class="lm-legend-dot" style="background:#795548"></span>Heavy</div>
         <div class="lm-legend-item"><span class="lm-legend-dot" style="background:#1976d2"></span>Officer</div>
       </div>
       <div class="lm-legend-divider"></div>
       <div class="lm-legend-row">
-        <div class="lm-legend-item"><span class="lm-legend-pin lm-legend-pin-sm" style="background:#4caf50"></span>1–2m delay</div>
-        <div class="lm-legend-item"><span class="lm-legend-pin lm-legend-pin-md" style="background:#ff9800"></span>3–5m delay</div>
-        <div class="lm-legend-item"><span class="lm-legend-pin lm-legend-pin-lg" style="background:#f44336"></span>6–9m delay</div>
-        <div class="lm-legend-item"><span class="lm-legend-pin lm-legend-pin-xl" style="background:#7b1fa2"></span>10m+ delay</div>
+        <div class="lm-legend-item"><span class="lm-legend-pin lm-legend-pin-sm" style="background:#4caf50"></span>Usual</div>
+        <div class="lm-legend-item"><span class="lm-legend-pin lm-legend-pin-md" style="background:#ff9800"></span>Normal</div>
+        <div class="lm-legend-item"><span class="lm-legend-pin lm-legend-pin-lg" style="background:#f44336"></span>Intermediate</div>
+        <div class="lm-legend-item"><span class="lm-legend-pin lm-legend-pin-xl" style="background:#795548"></span>Heavy — bigger pin = worse traffic</div>
       </div>
     </div>
   </div>
@@ -172,7 +177,7 @@
     <div class="lm-panel-header">
       <div>
         <h6><i class="bi bi-signpost-2 me-1"></i>Traffic Delay Monitor</h6>
-        <div class="lm-panel-sub">{{ mergedTraffic.length }} of {{ displayData.length }} junctions</div>
+        <div class="lm-panel-sub">{{ groupedTraffic.length }} junctions · {{ mergedTraffic.length }} roads</div>
       </div>
       <button class="lm-panel-toggle" (click)="panelCollapsed = !panelCollapsed" [title]="panelCollapsed ? 'Expand' : 'Collapse'">
         <i class="bi" [class.bi-chevron-up]="!panelCollapsed" [class.bi-chevron-down]="panelCollapsed"></i>
@@ -193,30 +198,53 @@
         </select>
       </div>
       <div class="lm-panel-body">
-        <div class="lm-row" *ngFor="let d of mergedTraffic"
-          [style.borderLeftColor]="getColor(d.congestion_level)"
-          [class.lm-row-selected]="selectedJunctionId === d.junction_id"
-          (click)="selectJunction(d)">
-          <div class="lm-row-icon" [style.background]="getColor(d.congestion_level) + '1a'" [style.color]="getColor(d.congestion_level)">
-            <i class="bi bi-signpost-2-fill"></i>
-          </div>
-          <div class="lm-row-main">
-            <div class="lm-primary">{{ d.coming_from || d.junction_name }}</div>
-            <div class="lm-sub">{{ d.station }} · {{ d.junction_name }}</div>
-            <div class="lm-row-meta">
-              <i class="bi bi-person-badge"></i> {{ officerForRow(d) }}
+        <ng-container *ngFor="let g of groupedTraffic">
+
+          <!-- Junction group header — click to collapse/expand (default: expanded) -->
+          <div class="lm-group-header"
+            [style.borderLeftColor]="getColor(g.worst.congestion_level)"
+            [class.lm-row-selected]="selectedJunctionId === g.junction_id"
+            (click)="toggleGroup(g.junction_id)">
+            <i class="bi lm-group-caret" [class.bi-chevron-down]="!isCollapsed(g.junction_id)" [class.bi-chevron-right]="isCollapsed(g.junction_id)"></i>
+            <div class="lm-group-main">
+              <div class="lm-group-name">{{ g.junction_name }}</div>
+              <div class="lm-group-sub">{{ g.station }} · {{ g.rows.length }} road{{ g.rows.length > 1 ? 's' : '' }}</div>
             </div>
+            <span class="lm-group-delay" [style.color]="getColor(g.worst.congestion_level)">
+              {{ g.worst.delay_minutes }}m
+            </span>
+            <button type="button" class="lm-group-locate" (click)="selectJunction(g.worst); $event.stopPropagation()" title="Show on map">
+              <i class="bi bi-geo-alt-fill"></i>
+            </button>
           </div>
-          <div class="lm-row-delays">
-            <div class="lm-delay-value">{{ d.total_seconds ? (d.total_seconds / 60 | number:'1.0-0') : d.delay_minutes }}<span>m</span></div>
-            <div class="lm-delay-sub" [class.lm-delay-hot]="d.usual_delay_minutes > 0" [class.lm-delay-ok]="!d.usual_delay_minutes">
-              {{ d.usual_delay_minutes > 0 ? '+' + d.usual_delay_minutes + 'm vs usual' : 'No delay' }}
+
+          <!-- Roads of this junction -->
+          <ng-container *ngIf="!isCollapsed(g.junction_id)">
+            <div class="lm-row lm-row-nested" *ngFor="let d of g.rows"
+              [style.borderLeftColor]="getColor(d.congestion_level)"
+              (click)="selectJunction(d)">
+              <div class="lm-row-icon" [style.background]="getColor(d.congestion_level) + '1a'" [style.color]="getColor(d.congestion_level)">
+                <i class="bi bi-signpost-2-fill"></i>
+              </div>
+              <div class="lm-row-main">
+                <div class="lm-primary">{{ d.coming_from || d.junction_name }}</div>
+                <div class="lm-row-meta">
+                  <i class="bi bi-person-badge"></i> {{ officerForRow(d) }}
+                </div>
+              </div>
+              <div class="lm-row-delays">
+                <div class="lm-delay-value">{{ d.total_seconds ? (d.total_seconds / 60 | number:'1.0-0') : d.delay_minutes }}<span>m</span></div>
+                <div class="lm-delay-sub" [class.lm-delay-hot]="d.usual_delay_minutes > 0" [class.lm-delay-ok]="!d.usual_delay_minutes">
+                  {{ d.usual_delay_minutes > 0 ? '+' + d.usual_delay_minutes + 'm vs usual' : 'No delay' }}
+                </div>
+                <div class="lm-status-chip" [style.background]="getColor(d.congestion_level) + '1a'" [style.color]="getColor(d.congestion_level)">
+                  {{ d.congestion_level | titlecase }}
+                </div>
+              </div>
             </div>
-            <div class="lm-status-chip" [style.background]="getColor(d.congestion_level) + '1a'" [style.color]="getColor(d.congestion_level)">
-              {{ d.congestion_level | titlecase }}
-            </div>
-          </div>
-        </div>
+          </ng-container>
+
+        </ng-container>
         <div class="lm-empty" *ngIf="!mergedTraffic.length">
           <i class="bi bi-signpost-2"></i>
           <div>No matching traffic data</div>

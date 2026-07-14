@@ -61,6 +61,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   mapReady = false;
   selectedJunctionId: number | null = null;
   panelCollapsed = false;
+  layersExpanded = false; // Google-style: chips row hidden until thumb's expand tap
   baseLayer: 'map' | 'satellite' | 'terrain' | 'dark' = 'map';
   private map?: L.Map;
   private baseLayers: Partial<Record<'map' | 'satellite' | 'terrain' | 'dark', L.TileLayer>> = {};
@@ -87,12 +88,22 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadJunctionMeta();
     this.subs.push(
       this.socket.trafficUpdates$.subscribe(updates => {
+        let routeChanged = false;
         updates.forEach(u => {
-          const idx = this.trafficData.findIndex(d => d.junction_id === u.junction_id);
-          if (idx >= 0) this.trafficData[idx] = { ...this.trafficData[idx], ...u };
-          else this.trafficData.push(u);
-          this.updateJunctionPin(u);
+          if (u.route_id) {
+            // Route-level push: merge by route, pins re-aggregate below
+            const ri = this.routeTrafficData.findIndex((r: any) => (r.route_id ?? r.id) === u.route_id);
+            if (ri >= 0) this.routeTrafficData[ri] = { ...this.routeTrafficData[ri], ...u };
+            else this.routeTrafficData.push(u);
+            routeChanged = true;
+          } else {
+            const idx = this.trafficData.findIndex(d => d.junction_id === u.junction_id);
+            if (idx >= 0) this.trafficData[idx] = { ...this.trafficData[idx], ...u };
+            else this.trafficData.push(u);
+            this.updateJunctionPin(u);
+          }
         });
+        if (routeChanged) this.renderJunctionPins(this.pinSourceData);
         this.touchLastUpdate(updates);
       }),
       this.socket.officerLocations$.subscribe(loc => {
@@ -124,15 +135,13 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     this.trafficSvc.getLatest().subscribe(data => {
       this.trafficData = data;
       this.touchLastUpdate(data);
-      if (!this.hasRoutes) this.renderJunctionPins(data);
+      if (!this.hasRoutes) this.renderJunctionPins(this.pinSourceData);
     });
     // Load route-level traffic (preferred when routes exist)
     this.routeSvc.getLatestTraffic().subscribe(data => {
       this.routeTrafficData = data;
       this.touchLastUpdate(data);
-      if (data.length > 0) {
-        this.renderJunctionPins(data.map((r: any) => ({ ...r, lat: r.junction_lat, lng: r.junction_lng })));
-      }
+      if (data.length > 0) this.renderJunctionPins(this.pinSourceData);
     });
     this.officerSvc.getLiveLocations().subscribe(data => {
       this.liveOfficers = data;
@@ -217,6 +226,37 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.freeFlowTraffic.filter(d => this.passesChipFilters(d));
   }
 
+  // ── Panel grouping: one collapsible block per junction, default expanded ──
+  collapsedJunctions = new Set<number>();
+
+  toggleGroup(id: number) {
+    if (this.collapsedJunctions.has(id)) this.collapsedJunctions.delete(id);
+    else this.collapsedJunctions.add(id);
+  }
+
+  isCollapsed(id: number) { return this.collapsedJunctions.has(id); }
+
+  // mergedTraffic is already sorted by delay desc, so each group's first row
+  // is its worst road, and groups come out ordered worst-junction-first.
+  get groupedTraffic() {
+    const groups = new Map<number, any>();
+    for (const d of this.mergedTraffic) {
+      let g = groups.get(d.junction_id);
+      if (!g) {
+        g = {
+          junction_id: d.junction_id,
+          junction_name: d.junction_name,
+          short_name: d.short_name,
+          station: d.station,
+          rows: [],
+        };
+        groups.set(d.junction_id, g);
+      }
+      g.rows.push(d);
+    }
+    return Array.from(groups.values()).map(g => ({ ...g, worst: g.rows[0] }));
+  }
+
   loadJunctionMeta() {
     this.junctionSvc.getAll().subscribe(list => {
       this.junctionsById = {};
@@ -261,10 +301,27 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     return true;
   }
 
+  // One pin per junction. With routes, a junction has several roads — the
+  // pin takes the WORST road (highest delay) for its color/size, and keeps
+  // all roads (sorted highest first) for the popup.
   private get pinSourceData() {
-    return this.hasRoutes
-      ? this.routeTrafficData.map((r: any) => ({ ...r, lat: r.junction_lat, lng: r.junction_lng }))
-      : this.trafficData;
+    if (!this.hasRoutes) return this.trafficData;
+    const byJunction = new Map<number, any[]>();
+    this.routeTrafficData.forEach((r: any) => {
+      const list = byJunction.get(r.junction_id) || [];
+      list.push(r);
+      byJunction.set(r.junction_id, list);
+    });
+    return Array.from(byJunction.values()).map(routes => {
+      const sorted = [...routes].sort((a, b) => (+b.delay_minutes || 0) - (+a.delay_minutes || 0));
+      const worst = sorted[0];
+      return {
+        ...worst,
+        lat: worst.junction_lat ?? this.junctionsById[worst.junction_id]?.lat,
+        lng: worst.junction_lng ?? this.junctionsById[worst.junction_id]?.lng,
+        all_routes: sorted,
+      };
+    }).filter(d => d.lat != null && d.lng != null);
   }
 
   // Instantly reflects the filter chips on the map by toggling marker
@@ -292,7 +349,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getCongestionColor(level: string): string {
-    const m: any = { usual: '#4caf50', normal: '#ff9800', intermediate: '#f44336', heavy: '#7b1fa2' };
+    const m: any = { usual: '#4caf50', normal: '#ff9800', intermediate: '#f44336', heavy: '#795548' };
     return m[level] || '#9e9e9e';
   }
 
@@ -336,11 +393,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.mapReady = true;
 
-    if (this.displayData.length) {
-      this.renderJunctionPins(this.hasRoutes
-        ? this.routeTrafficData.map((r: any) => ({ ...r, lat: r.junction_lat, lng: r.junction_lng }))
-        : this.trafficData);
-    }
+    if (this.displayData.length) this.renderJunctionPins(this.pinSourceData);
     if (this.liveOfficers.length) this.renderOfficerMarkers(this.liveOfficers);
   }
 
@@ -358,6 +411,12 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   // Big preview thumb (Google Maps behavior): one tap flips Map ↔ Satellite.
   toggleQuickLayer() {
     this.setBaseLayer(this.baseLayer === 'satellite' ? 'map' : 'satellite');
+  }
+
+  // Chip picked from the expanded row: apply it and tuck the row away again.
+  chooseLayer(layer: 'map' | 'satellite' | 'terrain' | 'dark') {
+    this.setBaseLayer(layer);
+    this.layersExpanded = false;
   }
 
   // Google's "my location" equivalent — re-fit the view around every pin.
@@ -382,14 +441,16 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.junctionNumberById.get(id)!;
   }
 
-  // Pin size tier by delay severity: 1-2m small, 3-5m medium, 6-9m large,
-  // 10m+ extra large — the higher the delay, the more noticeable the pin.
-  private pinSizeForDelay(delayMinutes: number): { w: number; h: number } {
-    const d = +delayMinutes || 0;
-    if (d >= 10) return { w: 40, h: 55 }; // Extra large
-    if (d >= 6) return { w: 33, h: 45 };  // Large
-    if (d >= 3) return { w: 27, h: 37 };  // Medium
-    return { w: 22, h: 30 };              // Small (0-2m)
+  // Pin size tier by congestion level — the worse the traffic, the bigger
+  // the pin: usual small, normal medium (orange), intermediate big (red),
+  // heavy biggest (brown).
+  private pinSizeForLevel(level: string): { w: number; h: number } {
+    switch (level) {
+      case 'heavy': return { w: 42, h: 58 };
+      case 'intermediate': return { w: 34, h: 46 };
+      case 'normal': return { w: 28, h: 38 };
+      default: return { w: 22, h: 30 }; // usual
+    }
   }
 
   // Teardrop pin icon — color and size both driven by the row's JSON fields
@@ -400,7 +461,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     const color = this.getCongestionColor(d.congestion_level);
     const isSelected = this.selectedJunctionId === d.junction_id;
     const label = String(this.getJunctionNumber(d.junction_id)).padStart(2, '0');
-    const { w: baseW, h: baseH } = this.pinSizeForDelay(d.delay_minutes);
+    const { w: baseW, h: baseH } = this.pinSizeForLevel(d.congestion_level);
     const selMult = isSelected ? 1.15 : 1;
     const w = Math.round(baseW * selMult);
     const h = Math.round(baseH * selMult);
@@ -425,8 +486,21 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  private didFitBounds = false;
+
   renderJunctionPins(data: any[]) {
     if (!this.map) return;
+
+    // Drop markers for junctions no longer in the data (e.g. deleted ones)
+    const liveIds = new Set(data.map(d => d.junction_id));
+    this.junctionMarkers.forEach((marker, id) => {
+      if (!liveIds.has(id)) {
+        this.map!.removeLayer(marker);
+        this.junctionMarkers.delete(id);
+        this.junctionDataById.delete(id);
+      }
+    });
+
     data.forEach(d => {
       this.junctionDataById.set(d.junction_id, d);
       const icon = this.pinIcon(d);
@@ -434,6 +508,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
         const m = this.junctionMarkers.get(d.junction_id)!;
         m.setIcon(icon);
         m.setLatLng([d.lat, d.lng]);
+        m.setPopupContent(this.junctionPopup(d));
       } else {
         const marker = L.marker([d.lat, d.lng], { icon }).addTo(this.map!);
         marker.bindTooltip(d.short_name || d.junction_name, {
@@ -443,14 +518,16 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
           opacity: 1,
         });
         marker.bindPopup(this.junctionPopup(d));
-        marker.on('click', () => this.selectJunction(d));
+        marker.on('click', () => this.selectJunction(this.junctionDataById.get(d.junction_id) || d));
         this.junctionMarkers.set(d.junction_id, marker);
       }
     });
 
-    if (data.length > 0) {
+    // Fit the view once on first render; later refreshes keep the user's view
+    if (data.length > 0 && !this.didFitBounds) {
       const bounds = L.latLngBounds(data.map(d => [d.lat, d.lng] as [number, number]));
       this.map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
+      this.didFitBounds = true;
     }
 
     this.applyChipFilters();
@@ -490,11 +567,35 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private junctionPopup(d: any): string {
     const color = this.getCongestionColor(d.congestion_level);
+
+    // Multi-road junction: list every incoming road, highest delay first —
+    // the top (worst) one is what the pin's color/size represents.
+    if (d.all_routes?.length > 1) {
+      const roads = d.all_routes.map((r: any, i: number) => {
+        const c = this.getCongestionColor(r.congestion_level);
+        const travel = r.total_seconds ? ` · ${Math.round(r.total_seconds / 60)} min travel` : '';
+        return `<div style="margin:4px 0;${i === 0 ? 'font-weight:700' : ''}">
+            <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${c};margin-right:6px"></span>
+            ${r.coming_from || 'Road ' + (i + 1)} — <b style="color:${c}">${r.delay_minutes}m delay</b>${travel}${i === 0 ? ' &nbsp;⬅ highest' : ''}
+          </div>`;
+      }).join('');
+      return `
+        <div style="font-family:'Segoe UI',Arial,sans-serif;min-width:230px">
+          <b>${d.junction_name}</b><br>
+          <span style="color:#666">Station: ${d.station || '—'}</span>
+          <hr style="margin:6px 0">
+          <div style="font-size:0.82em;color:#666;margin-bottom:2px">${d.all_routes.length} roads — highest delay first</div>
+          ${roads}
+        </div>
+      `;
+    }
+
     const usualColor = d.usual_delay_minutes > 0 ? '#d93025' : '#188038';
     return `
       <div style="font-family:'Segoe UI',Arial,sans-serif">
         <b>${d.junction_name}</b><br>
         Station: ${d.station || '—'}<br>
+        ${d.coming_from ? `Road: ${d.coming_from}<br>` : ''}
         Delay (free flow): <b style="color:${color}">${d.delay_minutes} min</b><br>
         Delay (vs usual): <b style="color:${usualColor}">${d.usual_delay_minutes > 0 ? '+' + d.usual_delay_minutes + ' min' : 'No delay'}</b><br>
         Status: <b style="color:${color}">${(d.congestion_level || '').toUpperCase()}</b>
