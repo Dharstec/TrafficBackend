@@ -20,7 +20,9 @@
   </div>
 
   <div class="lm-header-meta">
-    <span class="lm-update-time"><i class="bi bi-clock"></i>{{ lastUpdate | date:'hh:mm:ss a' }}</span>
+    <span class="lm-update-time" title="Time of the latest traffic data (last Google API call)">
+      <i class="bi bi-clock"></i>Data: {{ lastUpdate ? (lastUpdate | date:'hh:mm:ss a') : '—' }}
+    </span>
     <button type="button" class="lm-refresh-btn" (click)="refreshNow()" [disabled]="refreshing"
       title="Call Google API now — data updates only when you click this">
       <i class="bi bi-arrow-repeat" [class.lm-spinning]="refreshing"></i>
