@@ -346,6 +346,41 @@
   z-index: 1;
 }
 
+// Shown when the Google Maps browser key is missing/invalid (Google mode)
+.lm-map-nokey {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  background: var(--color-surface-alt);
+  color: var(--g-text-secondary);
+
+  i { font-size: 2rem; color: var(--g-blue); }
+
+  code {
+    background: var(--color-surface-solid);
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-size: 0.85em;
+  }
+}
+
+.lm-map-nokey-title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--g-text);
+}
+
+.lm-map-nokey-sub {
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
 // Note: pin marker icon styles (.lm-pin-icon / .lm-pin-selected) live in the
 // global stylesheet, not here — Leaflet creates marker DOM nodes outside
 // Angular's rendering pipeline, so component-scoped (emulated encapsulation)
