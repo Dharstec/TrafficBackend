@@ -32,7 +32,7 @@ export class SimulatorService {
     try {
       const saved = JSON.parse(fs.readFileSync(this.usageFile, 'utf8'));
       if (saved.month === month) return saved; // new month → fresh counter
-    } catch {}
+    } catch { }
     return { month, calls: 0 };
   }
 
@@ -105,6 +105,9 @@ export class SimulatorService {
         fetch(`${base}&departure_time=now`).then(r => r.json()),
         fetch(`${base}&departure_time=${nextWeekTs}`).then(r => r.json()),
       ]);
+
+      console.log(curRes, "------- Live --------");
+      console.log(usualRes, "------------ History -----------")
 
       if (curRes.status !== 'OK') {
         this.log.error(`[Google] ${curRes.status}: ${curRes.error_message || ''}`);
