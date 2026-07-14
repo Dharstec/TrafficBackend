@@ -5,7 +5,9 @@
   </div>
 
   <div class="lmc-header-right">
-    <span class="text-muted small"><i class="bi bi-clock me-1"></i>{{ lastUpdate | date:'hh:mm:ss a' }}</span>
+    <span class="text-muted small" title="Time of the latest traffic data (last Google API call)">
+      <i class="bi bi-clock me-1"></i>Data: {{ lastUpdate ? (lastUpdate | date:'hh:mm:ss a') : '—' }}
+    </span>
 
     <button type="button" class="lmc-refresh" (click)="refreshNow()" [disabled]="refreshing"
       title="Call Google API now — data updates only when you click this">

@@ -23,7 +23,8 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   // Use route data if available, else junction data
   get displayData() { return this.hasRoutes ? this.routeTrafficData : this.trafficData; }
   activeTab: 'map' | 'officers' | 'duty' = 'map';
-  lastUpdate = new Date();
+  // Time of the newest traffic row in the DB — NOT the page-open time.
+  lastUpdate: Date | null = null;
   refreshing = false;
 
   // Filters for each panel
@@ -55,7 +56,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
           else this.trafficData.push(u);
           if (this.map) this.updateMapCircle(u);
         });
-        this.lastUpdate = new Date();
+        this.touchLastUpdate(updates);
       }),
       this.socket.officerLocations$.subscribe(loc => this.updateOfficerMarker(loc)),
       this.socket.heavyAlerts$.subscribe(alert => {
@@ -74,11 +75,13 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadTodayDuty();
     this.trafficSvc.getLatest().subscribe(data => {
       this.trafficData = data;
+      this.touchLastUpdate(data);
       if (this.map && !this.hasRoutes) this.renderJunctionCircles(data);
     });
     // Load route-level traffic (preferred when routes exist)
     this.routeSvc.getLatestTraffic().subscribe(data => {
       this.routeTrafficData = data;
+      this.touchLastUpdate(data);
       if (this.map && data.length > 0) this.renderJunctionCircles(data.map(r => ({
         ...r, lat: r.junction_lat, lng: r.junction_lng,
       })));
@@ -87,6 +90,17 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
       this.liveOfficers = data;
       if (this.map) this.renderOfficerMarkers(data);
     });
+  }
+
+  // Header time = newest row's DB timestamp (when Google was last called),
+  // never the browser clock.
+  private touchLastUpdate(rows: any[]) {
+    const ts = rows
+      .map(r => new Date(r.time).getTime())
+      .filter(t => !isNaN(t));
+    if (!ts.length) return;
+    const newest = new Date(Math.max(...ts));
+    if (!this.lastUpdate || newest > this.lastUpdate) this.lastUpdate = newest;
   }
 
   loadTodayDuty() {
@@ -100,8 +114,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     this.refreshing = true;
     this.trafficSvc.refreshNow().subscribe({
       next: () => {
-        this.load();
-        this.lastUpdate = new Date();
+        this.load(); // fresh rows carry the new DB timestamp
         this.refreshing = false;
       },
       error: () => { this.refreshing = false; },
