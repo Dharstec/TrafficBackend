@@ -653,18 +653,35 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private gAddCityMask(rings: [number, number][][]) {
     if (!this.gmap || !(window as any).google) return;
-    const world = [
-      { lat: -89, lng: -179 }, { lat: -89, lng: 179 },
-      { lat: 89, lng: 179 }, { lat: 89, lng: -179 },
+
+    // Outer ring = only the locked pan area (not the whole world — a
+    // world-sized ring wraps unpredictably on Google's renderer and can
+    // blank the whole map). Pan is restricted to this box anyway, so
+    // masking beyond it is pointless.
+    const outer = [
+      { lat: 12.70, lng: 79.85 }, { lat: 12.70, lng: 80.45 },
+      { lat: 13.40, lng: 80.45 }, { lat: 13.40, lng: 79.85 },
     ];
-    // Google punches a hole only when the inner ring is wound in the
-    // OPPOSITE direction to the outer ring — hence the .reverse(). Without
-    // it the mask covers the entire map (white screen) instead of leaving
-    // Chennai visible.
-    const ringPaths = rings.map(ring => ring.map(([lat, lng]) => ({ lat, lng })).reverse());
+
+    // Signed area sign = winding direction. Google punches a hole only
+    // when inner rings wind OPPOSITE to the outer ring, so enforce it
+    // mathematically instead of guessing.
+    const signedArea = (ring: { lat: number; lng: number }[]) =>
+      ring.reduce((s, p, i) => {
+        const q = ring[(i + 1) % ring.length];
+        return s + (q.lng - p.lng) * (q.lat + p.lat);
+      }, 0);
+
+    const outerSign = Math.sign(signedArea(outer));
+    const holes = rings.map(ring => {
+      let path = ring.map(([lat, lng]) => ({ lat, lng }));
+      if (Math.sign(signedArea(path)) === outerSign) path = path.slice().reverse();
+      return path;
+    });
+
     this.cityMaskG = new google.maps.Polygon({
       map: this.gmap,
-      paths: [world, ...ringPaths],
+      paths: [outer, ...holes],
       fillColor: this.maskFill(),
       fillOpacity: 1,
       strokeWeight: 0,
@@ -672,7 +689,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
     });
     new google.maps.Polyline({
       map: this.gmap,
-      path: ringPaths[0],
+      path: holes[0],
       strokeColor: '#1565c0',
       strokeWeight: 2,
       strokeOpacity: 0.7,
@@ -748,6 +765,11 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
       const bounds = new google.maps.LatLngBounds();
       data.forEach(d => bounds.extend({ lat: +d.lat, lng: +d.lng }));
       this.gmap.fitBounds(bounds, 60);
+      // A single junction makes fitBounds dive to maximum zoom — cap it so
+      // the view still shows the surrounding roads.
+      google.maps.event.addListenerOnce(this.gmap, 'idle', () => {
+        if (this.gmap.getZoom() > 15) this.gmap.setZoom(15);
+      });
       this.didFitBounds = true;
     }
 
