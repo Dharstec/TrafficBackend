@@ -4,7 +4,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from './auth.service';
 import { Subject } from 'rxjs';
 
-const API = 'http://3.111.130.232:3000/api';
+const API = 'https://itmsapi.dharstec.com/api';
 
 export interface GeoPosition { lat: number; lng: number; accuracy?: number; }
 

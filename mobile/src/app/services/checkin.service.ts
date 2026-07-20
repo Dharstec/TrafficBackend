@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from './auth.service';
 
-const API = 'http://3.111.130.232:3000/api';
+const API = 'https://itmsapi.dharstec.com/api';
 
 @Injectable({ providedIn: 'root' })
 export class CheckinService {
