@@ -77,4 +77,27 @@
   .sidebar-toggle-checkbox:checked ~ ::ng-deep app-sidebar .sidebar {
     transform: translateX(0);
   }
+
+  // While the drawer is open, HIDE every floating page element outright.
+  // They live in their own high stacking contexts (filter chips, results
+  // panel, Leaflet popups/controls, header buttons) and reliably win the
+  // z-index war against the drawer on some browsers — so they don't get
+  // layered, they get removed until the drawer closes.
+  .sidebar-toggle-checkbox:checked ~ .main-content ::ng-deep {
+    .lm-header,
+    .lm-chipbar,
+    .lm-chip-backdrop,
+    .lm-fchip-panel,
+    .lm-panel,
+    .lm-legend,
+    .lm-basemap,
+    .lm-fit-btn,
+    .lm-alert,
+    .leaflet-control-container,
+    .leaflet-pane.leaflet-popup-pane,
+    .leaflet-pane.leaflet-tooltip-pane,
+    .leaflet-pane.leaflet-marker-pane {
+      visibility: hidden !important;
+    }
+  }
 }
