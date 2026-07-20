@@ -13,12 +13,12 @@
   </div>
   <nav class="mt-2 flex-grow-1">
     <p class="nav-section-label nav-text">Traffic Tools</p>
-    <a routerLink="/dashboard" routerLinkActive="active" title="Dashboard"><i class="bi bi-speedometer2"></i><span class="nav-text">Dashboard</span></a>
-    <a routerLink="/live-monitor" routerLinkActive="active" title="Live Monitor"><i class="bi bi-broadcast"></i><span class="nav-text">Live Monitor</span></a>
+    <a routerLink="/dashboard" routerLinkActive="active" (click)="closeDrawer()" title="Dashboard"><i class="bi bi-speedometer2"></i><span class="nav-text">Dashboard</span></a>
+    <a routerLink="/live-monitor" routerLinkActive="active" (click)="closeDrawer()" title="Live Monitor"><i class="bi bi-broadcast"></i><span class="nav-text">Live Monitor</span></a>
 
     <p class="nav-section-label nav-text">Data Management</p>
-    <a routerLink="/junctions" routerLinkActive="active" title="Junctions"><i class="bi bi-signpost-2"></i><span class="nav-text">Junctions</span></a>
-    <a routerLink="/officers" routerLinkActive="active" title="Police Management"><i class="bi bi-person-badge"></i><span class="nav-text">Police Management</span></a>
+    <a routerLink="/junctions" routerLinkActive="active" (click)="closeDrawer()" title="Junctions"><i class="bi bi-signpost-2"></i><span class="nav-text">Junctions</span></a>
+    <a routerLink="/officers" routerLinkActive="active" (click)="closeDrawer()" title="Police Management"><i class="bi bi-person-badge"></i><span class="nav-text">Police Management</span></a>
   </nav>
 
   <div class="sidebar-footer">

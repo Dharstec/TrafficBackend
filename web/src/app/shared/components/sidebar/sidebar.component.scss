@@ -317,3 +317,11 @@ nav a {
   0%, 100% { box-shadow: 0 0 0 2px var(--color-surface-solid), 0 0 0 2px rgba(76, 175, 80, 0.4); }
   50% { box-shadow: 0 0 0 2px var(--color-surface-solid), 0 0 0 5px rgba(76, 175, 80, 0); }
 }
+
+// Very small phones: drawer never spans the full screen — a slice of the
+// page stays visible behind the backdrop so "outside" is clearly tappable.
+@media (max-width: 991px) {
+  .sidebar {
+    width: min(var(--sidebar-width), 84vw);
+  }
+}

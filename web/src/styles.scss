@@ -147,6 +147,9 @@ body.sidebar-collapsed .main-content {
   .main-content,
   body.sidebar-collapsed .main-content {
     margin-left: 0;
+    // Top padding clears the fixed hamburger button (44px at top:16) so it
+    // never sits on top of a page's header; sides tighten for phone widths.
+    padding: 74px 14px 20px;
   }
 }
 

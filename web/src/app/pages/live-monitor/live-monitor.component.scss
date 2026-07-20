@@ -1087,7 +1087,10 @@
   .lm-map {
     position: relative;
     inset: auto;
-    height: 420px;
+    // Viewport-proportional: tall enough to use, never swallowing the page
+    height: 52vh;
+    min-height: 320px;
+    max-height: 480px;
     border-radius: var(--radius-lg);
     overflow: hidden;
     box-shadow: var(--shadow-md);
@@ -1134,18 +1137,38 @@
 
   // Floating layer control + legend scale down inside the smaller map
   .lm-bm-thumb { width: 52px; height: 52px; }
-  .lm-legend { max-width: 75%; font-size: 0.62rem; }
+  .lm-bm-chips { flex-wrap: wrap; }
+  .lm-legend { max-width: 78%; font-size: 0.62rem; }
+
+  // Heavy-traffic alerts: let the Acknowledge button wrap under the text
+  // instead of crushing it sideways
+  .lm-alert { flex-wrap: wrap; }
 }
 
 @media (max-width: 575px) {
+  // Header becomes a clean 3-row stack:
+  //   1) live dot + title        2) Data time ⟷ Refresh Now (full width)
+  //   3) swipeable tab pills (full width)
+  .lm-header-title { order: 1; }
+  .lm-header-meta {
+    order: 2;
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+  }
+  .lm-tabbar { order: 3; }
+
   .lm-header-title h5 { font-size: 0.95rem; }
   .lm-tab { padding: 8px 12px; font-size: 0.76rem; }
   .lm-refresh-btn { padding: 7px 13px; font-size: 0.74rem; }
   .lm-update-time { font-size: 0.7rem; }
-  .lm-map { height: 360px; }
+  .lm-map { min-height: 300px; }
   .lm-panel { height: 340px; }
+  .lm-panel-tools { padding: 0 12px 10px; }
   .lm-row { padding: 10px 12px; gap: 9px; }
   .lm-row-nested { padding-left: 20px; }
   .lm-group-header { padding: 9px 10px; }
   .lm-fchip { padding: 8px 11px; font-size: 0.74rem; }
+  .lm-legend { max-width: calc(100% - 24px); }
+  .lm-fit-btn { bottom: 100px; }
 }
