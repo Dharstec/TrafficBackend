@@ -1,12 +1,12 @@
-<!-- Page temporarily blanked: full original markup preserved inside the
-     *ngIf="false" container below. Delete the placeholder + the ng-container
-     wrapper to restore the page exactly as it was. -->
-<div class="page-blank">
+<!-- Page visibility is controlled by `pageHidden` in junctions.component.ts:
+     true  → blank placeholder only
+     false → the full Junctions management page -->
+<div class="page-blank" *ngIf="pageHidden">
   <i class="bi bi-signpost-2"></i>
   <h2>Junctions</h2>
 </div>
 
-<ng-container *ngIf="false">
+<ng-container *ngIf="!pageHidden">
 <div class="topbar">
   <h5 class="topbar-title"><i class="bi bi-signpost-2"></i>Junctions / Signals Management</h5>
   <button class="btn-solid" (click)="openAdd()"><i class="bi bi-plus-lg"></i>Add Junction</button>

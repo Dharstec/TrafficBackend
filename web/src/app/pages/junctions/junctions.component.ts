@@ -8,6 +8,10 @@ import { JunctionRouteService } from '../../core/services/junction-route.service
   styleUrls: ['./junctions.component.scss'],
 })
 export class JunctionsComponent implements OnInit {
+  // Page visibility switch: true → blank placeholder page, false → full
+  // Junctions page (add/edit junctions + routes). Flip this one word.
+  pageHidden = false;
+
   junctions: any[] = [];
   showForm = false;
   editId: number | null = null;
