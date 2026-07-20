@@ -12,7 +12,6 @@ import { SidebarComponent } from './shared/components/sidebar/sidebar.component'
 import { LoginComponent } from './pages/login/login.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
 import { LiveMonitorComponent } from './pages/live-monitor/live-monitor.component';
-import { MapViewComponent } from './pages/map-view/map-view.component';
 import { JunctionsComponent } from './pages/junctions/junctions.component';
 import { OfficersComponent } from './pages/officers/officers.component';
 
@@ -23,7 +22,6 @@ import { OfficersComponent } from './pages/officers/officers.component';
     LoginComponent,
     DashboardComponent,
     LiveMonitorComponent,
-    MapViewComponent,
     JunctionsComponent,
     OfficersComponent,
   ],

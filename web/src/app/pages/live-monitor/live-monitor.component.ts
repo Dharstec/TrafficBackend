@@ -155,7 +155,7 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   load() {
-    this.loadTodayDuty();
+    // Today's Duty tab removed from the UI — loadTodayDuty() kept but not called.
     this.trafficSvc.getLatest().subscribe(data => {
       this.trafficData = data;
       this.touchLastUpdate(data);

@@ -1112,3 +1112,40 @@
     }
   }
 }
+
+// ── Mobile polish — header wraps cleanly, tabs scroll, controls shrink ──
+@media (max-width: 991px) {
+  .lm-header {
+    gap: 10px;
+  }
+
+  // Tabs drop to their own full-width scrollable row under the title
+  .lm-tabbar {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
+  }
+
+  .lm-header-meta {
+    margin-left: auto;
+  }
+
+  // Floating layer control + legend scale down inside the smaller map
+  .lm-bm-thumb { width: 52px; height: 52px; }
+  .lm-legend { max-width: 75%; font-size: 0.62rem; }
+}
+
+@media (max-width: 575px) {
+  .lm-header-title h5 { font-size: 0.95rem; }
+  .lm-tab { padding: 8px 12px; font-size: 0.76rem; }
+  .lm-refresh-btn { padding: 7px 13px; font-size: 0.74rem; }
+  .lm-update-time { font-size: 0.7rem; }
+  .lm-map { height: 360px; }
+  .lm-panel { height: 340px; }
+  .lm-row { padding: 10px 12px; gap: 9px; }
+  .lm-row-nested { padding-left: 20px; }
+  .lm-group-header { padding: 9px 10px; }
+  .lm-fchip { padding: 8px 11px; font-size: 0.74rem; }
+}

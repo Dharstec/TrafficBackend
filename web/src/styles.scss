@@ -150,6 +150,39 @@ body.sidebar-collapsed .main-content {
   }
 }
 
+/* Blank placeholder pages (Dashboard / Junctions / Police Management) —
+   original page markup is preserved inside *ngIf="false" wrappers. */
+.page-blank {
+  min-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--color-surface-solid);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+
+  i { font-size: 2.4rem; color: var(--color-border); }
+
+  h2 {
+    margin: 0;
+    font-weight: 700;
+    color: var(--color-text-muted);
+    opacity: 0.55;
+    letter-spacing: 0.01em;
+  }
+}
+
+@media (max-width: 991px) {
+  .page-blank {
+    min-height: calc(100vh - 170px);
+    border-radius: var(--radius-md);
+
+    h2 { font-size: 1.2rem; }
+  }
+}
+
 /* Junction name labels on the Google map (MarkerLabel className) */
 .junction-glabel {
   background: rgba(255, 255, 255, 0.95);

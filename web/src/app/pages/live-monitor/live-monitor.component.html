@@ -13,10 +13,6 @@
       <i class="bi bi-person-badge"></i><span class="lm-tab-label">Live Officers</span>
       <span class="lm-tab-count">{{ liveOfficers.length }}</span>
     </button>
-    <button class="lm-tab" [class.active]="activeTab==='duty'" (click)="activeTab='duty';loadTodayDuty()">
-      <i class="bi bi-clock-history"></i><span class="lm-tab-label">Today's Duty</span>
-      <span class="lm-tab-count">{{ todayDuty.length }}</span>
-    </button>
   </div>
 
   <div class="lm-header-meta">
@@ -291,42 +287,6 @@
         </tr>
         <tr *ngIf="!liveOfficers.length">
           <td colspan="5" class="lm-empty-row">No officers online</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<!-- Today's Duty Tab -->
-<div class="lm-card" *ngIf="activeTab==='duty'">
-  <div class="lm-table-scroll">
-    <table class="lm-data-table">
-      <thead>
-        <tr><th>Officer</th><th>Junction</th><th>Check-in</th><th>Check-out</th><th>Duration</th><th>Status</th></tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let d of todayDuty">
-          <td>
-            <div class="lm-cell-person">
-              <div class="lm-avatar">{{ d.officer_name?.charAt(0) }}</div>
-              <div>
-                <div class="fw-semibold">{{ d.officer_name }}</div>
-                <div class="lm-sub">{{ d.badge_number }}</div>
-              </div>
-            </div>
-          </td>
-          <td>{{ d.short_name }}</td>
-          <td>{{ d.check_in_time | date:'hh:mm a' }}</td>
-          <td class="lm-muted">{{ d.check_out_time ? (d.check_out_time | date:'hh:mm a') : '—' }}</td>
-          <td class="fw-bold" [class.lm-delay-ok]="d.is_active">{{ formatDuration(d.duration_minutes) }}</td>
-          <td>
-            <span class="lm-badge" [class.lm-badge-green]="d.is_active" [class.lm-badge-grey]="!d.is_active">
-              {{ d.is_active ? 'Active' : 'Done' }}
-            </span>
-          </td>
-        </tr>
-        <tr *ngIf="!todayDuty.length">
-          <td colspan="6" class="lm-empty-row">No duty records today</td>
         </tr>
       </tbody>
     </table>

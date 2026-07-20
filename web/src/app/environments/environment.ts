@@ -11,7 +11,7 @@ export const environment = {
   // 'leaflet' → 100% free map (CARTO tiles + our own route ribbons).
   // Any payment worry? Change this ONE word to 'leaflet' and rebuild —
   // everything else keeps working.
-  mapEngine: 'google' as 'google' | 'leaflet',
+  mapEngine: 'leaflet' as 'google' | 'leaflet',
   // Browser key for Google Maps JavaScript API. Best practice: a SEPARATE
   // key from the server's Directions key, restricted by HTTP referrer,
   // with "Maps JavaScript API" enabled.
