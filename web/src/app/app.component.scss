@@ -43,17 +43,26 @@
   // doesn't contribute to the host's box), so a percentage translateX on
   // the host resolves against a zero-width box and does nothing. The
   // child .sidebar has a real `width: var(--sidebar-width)` to translate.
+  //
+  // z-index 950/900: the drawer + backdrop must sit ABOVE every floating
+  // page element (map chips z-500, results panel z-560, Leaflet controls)
+  // or those bleed through the open drawer. The drawer also goes fully
+  // SOLID on mobile — the desktop glass look reads as broken transparency
+  // when page content sits right behind it on a phone.
   ::ng-deep app-sidebar .sidebar {
-    z-index: 250;
+    z-index: 950;
     transform: translateX(-100%);
     transition: transform 0.25s ease;
+    background: var(--color-surface-solid);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   .sidebar-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 240;
-    background: rgba(11, 13, 23, 0.45);
+    z-index: 900;
+    background: rgba(11, 13, 23, 0.55);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.25s ease;
