@@ -7,8 +7,12 @@ export class ThemeService {
   private current: Theme;
 
   constructor() {
-    const saved = localStorage.getItem('traffic_theme') as Theme | null;
-    this.current = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    // Dark mode toggle is hidden from the UI — force light always, so the
+    // app never falls back to a device's system dark mode or an old saved
+    // 'dark' choice with no way left to switch it back. Un-hide the toggle
+    // in sidebar.component.html to restore the saved/system-based logic.
+    this.current = 'light';
+    localStorage.removeItem('traffic_theme');
     this.apply();
   }
 
