@@ -22,7 +22,8 @@
   </nav>
 
   <div class="sidebar-footer">
-    <button class="theme-toggle" (click)="theme.toggle()" [title]="theme.isDark ? 'Switch to light' : 'Switch to dark'">
+    <!-- Dark mode hidden from the UI (kept in code — set to true to restore) -->
+    <button class="theme-toggle" *ngIf="false" (click)="theme.toggle()" [title]="theme.isDark ? 'Switch to light' : 'Switch to dark'">
       <i class="bi" [class.bi-sun]="theme.isDark" [class.bi-moon-stars]="!theme.isDark"></i>
       <span class="nav-text">{{ theme.isDark ? 'Light mode' : 'Dark mode' }}</span>
     </button>

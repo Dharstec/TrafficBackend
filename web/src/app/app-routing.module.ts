@@ -13,8 +13,8 @@ const routes: Routes = [
   { path: 'live-monitor', component: LiveMonitorComponent, canActivate: [AuthGuard] },
   { path: 'junctions', component: JunctionsComponent, canActivate: [AuthGuard] },
   { path: 'officers', component: OfficersComponent, canActivate: [AuthGuard] },
-  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-  { path: '**', redirectTo: 'dashboard' },
+  { path: '', redirectTo: 'live-monitor', pathMatch: 'full' },
+  { path: '**', redirectTo: 'live-monitor' },
 ];
 
 @NgModule({

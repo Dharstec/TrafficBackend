@@ -109,7 +109,9 @@ export class LiveMonitorComponent implements OnInit, AfterViewInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    this.load();
+    this.load(); // show whatever is already in the DB immediately
+    this.refreshNow(); // then pull fresh Google data — Live Monitor is now
+                        // the landing page, so arriving here IS the trigger
     this.loadJunctionMeta();
     this.subs.push(
       this.socket.trafficUpdates$.subscribe(updates => {
