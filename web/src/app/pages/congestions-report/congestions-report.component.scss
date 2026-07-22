@@ -1,0 +1,226 @@
+@use 'mixins' as m;
+@use 'variables' as v;
+
+.topbar {
+  @include m.topbar;
+  position: relative;
+  z-index: 50;
+}
+
+.topbar-title {
+  @include m.topbar-title;
+}
+
+.topbar-range {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  margin-left: 2px;
+}
+
+.table-card {
+  @include m.table-card;
+  position: relative;
+  z-index: 1;
+}
+
+.table-card-title {
+  @include m.table-card-title;
+}
+
+.data-table {
+  @include m.data-table;
+}
+
+.cell-strong {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.cell-muted {
+  color: var(--color-text-muted);
+}
+
+.cell-small {
+  font-size: 0.82rem;
+}
+
+.empty-row {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 1.5rem 0;
+  font-size: 0.85rem;
+}
+
+.badge-usual { @include m.badge-pill(v.$color-success); }
+.badge-normal { @include m.badge-pill(v.$color-warning); }
+.badge-intermediate { @include m.badge-pill(v.$color-danger); }
+.badge-heavy { @include m.badge-pill(v.$color-heavy); }
+
+// ── Morning / Evening sections ─────────────────────────────────
+.congestion-section {
+  & + & {
+    margin-top: 1.5rem;
+  }
+}
+
+.congestion-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: 0.6rem;
+
+  i {
+    color: var(--color-primary-500, v.$primary-500);
+  }
+}
+
+.title-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(v.$primary-500, 0.14);
+  color: var(--color-primary-500, v.$primary-500);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+// Fixed-height, internally-scrolling table body — keeps a 100+ row report
+// readable in a card instead of pushing the whole page height out.
+.table-scroll {
+  max-height: 420px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+
+  // Thin, inset scrollbar that sits inside the rounded border rather
+  // than a default full-width OS scrollbar.
+  scrollbar-width: thin;
+  scrollbar-color: rgba(v.$primary-500, 0.35) transparent;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(v.$primary-500, 0.3);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(v.$primary-500, 0.5);
+    background-clip: padding-box;
+  }
+
+  .data-table {
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--color-surface-solid);
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+  }
+}
+
+// ── Date range picker ───────────────────────────────────────────
+.date-picker {
+  position: relative;
+}
+
+.date-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-primary-500, v.$primary-500);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+
+  &:hover {
+    border-color: rgba(v.$primary-500, 0.4);
+    background: rgba(v.$primary-500, 0.06);
+  }
+}
+
+.date-popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 20;
+  min-width: 260px;
+  @include m.card-surface();
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.date-popover-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.field-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.field-input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.85rem;
+
+  &:focus {
+    outline: none;
+    border-color: rgba(v.$primary-500, 0.5);
+  }
+}
+
+.date-popover-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 0.25rem;
+}
+
+.btn-search {
+  @include m.btn-solid(v.$color-success);
+  padding: 7px 16px;
+  font-size: 0.8rem;
+}
+
+.btn-reset {
+  @include m.btn-ghost;
+  padding: 7px 16px;
+  font-size: 0.8rem;
+}

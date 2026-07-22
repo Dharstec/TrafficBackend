@@ -6,6 +6,8 @@ import { DashboardComponent } from './pages/dashboard/dashboard.component';
 import { LiveMonitorComponent } from './pages/live-monitor/live-monitor.component';
 import { JunctionsComponent } from './pages/junctions/junctions.component';
 import { OfficersComponent } from './pages/officers/officers.component';
+import { CongestionsHistoryComponent } from './pages/congestions-history/congestions-history.component';
+import { CongestionsReportComponent } from './pages/congestions-report/congestions-report.component';
 
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -13,6 +15,8 @@ const routes: Routes = [
   { path: 'live-monitor', component: LiveMonitorComponent, canActivate: [AuthGuard] },
   { path: 'junctions', component: JunctionsComponent, canActivate: [AuthGuard] },
   { path: 'officers', component: OfficersComponent, canActivate: [AuthGuard] },
+  { path: 'congestions-history', component: CongestionsHistoryComponent, canActivate: [AuthGuard] },
+  { path: 'congestions-reports', component: CongestionsReportComponent, canActivate: [AuthGuard] },
   { path: '', redirectTo: 'live-monitor', pathMatch: 'full' },
   { path: '**', redirectTo: 'live-monitor' },
 ];

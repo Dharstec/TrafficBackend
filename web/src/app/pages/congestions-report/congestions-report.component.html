@@ -1,0 +1,105 @@
+<div class="topbar">
+  <h5 class="topbar-title">
+    <i class="bi bi-file-earmark-bar-graph"></i>Congestions Report
+    <span class="topbar-range" *ngIf="isFiltered">{{ headerRangeLabel }}</span>
+  </h5>
+
+  <div class="date-picker">
+    <button class="date-btn" (click)="toggleDatePicker()">
+      <ng-container *ngIf="dateButtonLabel; else addDates">{{ dateButtonLabel }}</ng-container>
+      <ng-template #addDates>+ Add Dates</ng-template>
+      <i class="bi bi-calendar3"></i>
+    </button>
+
+    <div class="date-popover" *ngIf="showDatePicker">
+      <div class="date-popover-row">
+        <label class="field-label">From</label>
+        <input class="field-input" type="date" [(ngModel)]="draftFrom" />
+      </div>
+      <div class="date-popover-row">
+        <label class="field-label">To</label>
+        <input class="field-input" type="date" [(ngModel)]="draftTo" />
+      </div>
+      <div class="date-popover-actions">
+        <button class="btn-reset" (click)="clearDateRange()">Clear</button>
+        <button class="btn-search" [disabled]="!draftFrom || !draftTo" (click)="applyDateRange()">Apply</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="table-card">
+  <h6 class="table-card-title"><i class="bi bi-signpost-split tw-text-primary-500"></i>Biggest Congestions</h6>
+
+  <div class="congestion-section">
+    <div class="congestion-section-head">
+      <i class="bi bi-sunrise"></i>Morning
+      <span class="title-count" *ngIf="morningRows.length">{{ morningRows.length }}</span>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Station</th>
+            <th>Signal No</th>
+            <th>Signal Name</th>
+            <th>Time</th>
+            <th>Observed Delay</th>
+            <th>Usual Delay</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of morningRows">
+            <td class="cell-strong">{{ r.station }}</td>
+            <td class="cell-muted cell-small">{{ r.signalNo }}</td>
+            <td class="cell-small">{{ r.signalName }}</td>
+            <td class="cell-muted cell-small">{{ formatDate(r) }}, {{ formatTime(r) }}</td>
+            <td>
+              <span class="badge badge-{{ delayBand(r.observedDelay) }}">{{ r.observedDelay }} mins</span>
+            </td>
+            <td class="cell-muted cell-small">{{ r.usualDelay }} mins</td>
+          </tr>
+          <tr *ngIf="!morningRows.length">
+            <td colspan="6" class="empty-row">No morning congestion data for this range</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="congestion-section">
+    <div class="congestion-section-head">
+      <i class="bi bi-sunset"></i>Evening
+      <span class="title-count" *ngIf="eveningRows.length">{{ eveningRows.length }}</span>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Station</th>
+            <th>Signal No</th>
+            <th>Signal Name</th>
+            <th>Time</th>
+            <th>Observed Delay</th>
+            <th>Usual Delay</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of eveningRows">
+            <td class="cell-strong">{{ r.station }}</td>
+            <td class="cell-muted cell-small">{{ r.signalNo }}</td>
+            <td class="cell-small">{{ r.signalName }}</td>
+            <td class="cell-muted cell-small">{{ formatDate(r) }}, {{ formatTime(r) }}</td>
+            <td>
+              <span class="badge badge-{{ delayBand(r.observedDelay) }}">{{ r.observedDelay }} mins</span>
+            </td>
+            <td class="cell-muted cell-small">{{ r.usualDelay }} mins</td>
+          </tr>
+          <tr *ngIf="!eveningRows.length">
+            <td colspan="6" class="empty-row">No evening congestion data for this range</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

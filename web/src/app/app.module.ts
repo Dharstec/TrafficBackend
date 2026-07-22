@@ -9,21 +9,27 @@ import { AppComponent } from './app.component';
 import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 
 import { SidebarComponent } from './shared/components/sidebar/sidebar.component';
+import { EchartComponent } from './shared/components/echart/echart.component';
 import { LoginComponent } from './pages/login/login.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
 import { LiveMonitorComponent } from './pages/live-monitor/live-monitor.component';
 import { JunctionsComponent } from './pages/junctions/junctions.component';
 import { OfficersComponent } from './pages/officers/officers.component';
+import { CongestionsHistoryComponent } from './pages/congestions-history/congestions-history.component';
+import { CongestionsReportComponent } from './pages/congestions-report/congestions-report.component';
 
 @NgModule({
   declarations: [
     AppComponent,
     SidebarComponent,
+    EchartComponent,
     LoginComponent,
     DashboardComponent,
     LiveMonitorComponent,
     JunctionsComponent,
     OfficersComponent,
+    CongestionsHistoryComponent,
+    CongestionsReportComponent,
   ],
   imports: [
     BrowserModule,
