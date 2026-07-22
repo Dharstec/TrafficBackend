@@ -1,106 +1,285 @@
-<!-- Page temporarily blanked: full original markup preserved inside the
-     *ngIf="false" container below. Delete the placeholder + the ng-container
-     wrapper to restore the page exactly as it was. -->
-<div class="page-blank">
-  <i class="bi bi-speedometer2"></i>
-  <h2>Dashboard</h2>
-</div>
-
-<ng-container *ngIf="false">
 <div class="topbar">
-  <h5 class="topbar-title"><i class="bi bi-speedometer2"></i>Dashboard</h5>
-  <span class="topbar-live"><span class="live-dot"></span>Updates on Refresh Now — no auto API calls</span>
+  <h5 class="topbar-title"><i class="bi bi-speedometer2"></i>Traffic Monitoring Dashboard</h5>
+  <span class="topbar-live"><span class="live-dot"></span>{{ lastUpdatedLabel }} — dummy data for preview</span>
 </div>
 
-<!-- Summary Cards — deliberately asymmetric: one hero tile, one tall
-     bookend, four square tiles in between. Not a uniform grid. -->
-<div class="stat-grid tw-mb-8">
-  <div class="stat-card stat-card--info stat-card--hero">
-    <div class="stat-icon"><i class="bi bi-signpost-2"></i></div>
-    <div class="stat-label">Junctions</div>
-    <div class="stat-value">{{ stats.total }}</div>
-    <div class="stat-sub">Monitored</div>
-  </div>
+<!-- Priority Snapshot — one-line "is anything on fire" read for the
+     Monitoring Head, with jump-links straight to the relevant table. -->
+<div class="priority-strip tw-mb-6">
+  <!-- <a class="priority-chip priority-chip--danger" href="#section-critical-alerts">
+    <i class="bi bi-broadcast"></i>
+    <span class="priority-chip-count">{{ criticalAlertCount }}</span>
+    Critical Alerts
+  </a> -->
+  <a class="priority-chip priority-chip--danger" href="#section-attention-junctions">
+    <i class="bi bi-exclamation-triangle"></i>
+    <span class="priority-chip-count">{{ attentionJunctionCount }}</span>
+    Junctions Need Attention
+  </a>
+  <a class="priority-chip priority-chip--heavy" href="#section-duty-exceptions">
+    <i class="bi bi-person-fill-exclamation"></i>
+    <span class="priority-chip-count">{{ dutyExceptionCount }}</span>
+    Officers Missing / Late
+  </a>
+  <!-- <a class="priority-chip priority-chip--heavy" href="#section-failing-signals">
+    <i class="bi bi-cpu"></i>
+    <span class="priority-chip-count">{{ signalsUnderRepairCount }}</span>
+    Signals Under Repair
+  </a> -->
+</div>
+
+<!-- Row 1: KPI Summary Cards -->
+<div class="stat-grid tw-mb-6">
   <div class="stat-card stat-card--success">
     <div class="stat-icon"><i class="bi bi-check-circle"></i></div>
-    <div class="stat-label">Usual</div>
-    <div class="stat-value stat-value--success">{{ stats.usual }}</div>
-    <div class="stat-sub">1–2 mins</div>
+    <div class="stat-body">
+      <div class="stat-label">Usual</div>
+      <div class="stat-value stat-value--success">{{ stats.usual }}</div>
+      <div class="stat-sub">1–2 mins</div>
+    </div>
   </div>
   <div class="stat-card stat-card--warning">
     <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
-    <div class="stat-label">Normal</div>
-    <div class="stat-value stat-value--warning">{{ stats.normal }}</div>
-    <div class="stat-sub">3–5 mins</div>
+    <div class="stat-body">
+      <div class="stat-label">Normal</div>
+      <div class="stat-value stat-value--warning">{{ stats.normal }}</div>
+      <div class="stat-sub">3–5 mins</div>
+    </div>
   </div>
   <div class="stat-card stat-card--danger">
     <div class="stat-icon"><i class="bi bi-exclamation-triangle"></i></div>
-    <div class="stat-label">Intermediate</div>
-    <div class="stat-value stat-value--danger">{{ stats.intermediate }}</div>
-    <div class="stat-sub">6–9 mins</div>
+    <div class="stat-body">
+      <div class="stat-label">Intermediate</div>
+      <div class="stat-value stat-value--danger">{{ stats.intermediate }}</div>
+      <div class="stat-sub">6–9 mins</div>
+    </div>
   </div>
   <div class="stat-card stat-card--heavy">
     <div class="stat-icon"><i class="bi bi-cone-striped"></i></div>
-    <div class="stat-label">Heavy</div>
-    <div class="stat-value stat-value--heavy">{{ stats.heavy }}</div>
-    <div class="stat-sub">10+ mins</div>
-  </div>
-  <div class="stat-card stat-card--info stat-card--tall">
-    <div class="stat-icon"><i class="bi bi-person-badge"></i></div>
-    <div class="stat-label">Officers Online</div>
-    <div class="stat-value stat-value--info">{{ stats.activeOfficers }}</div>
-    <div class="stat-sub">Live tracking</div>
+    <div class="stat-body">
+      <div class="stat-label">Heavy</div>
+      <div class="stat-value stat-value--heavy">{{ stats.heavy }}</div>
+      <div class="stat-sub">10+ mins</div>
+    </div>
   </div>
 </div>
 
-<!-- Traffic Table + Incidents -->
-<div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-12 tw-gap-4">
-  <div class="lg:tw-col-span-8">
-    <div class="table-card">
-      <h6 class="table-card-title"><i class="bi bi-list-ul"></i>Live Junction Status</h6>
+<!-- Row 2: Top Congested Roads + Zone-wise Congestion -->
+<div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-12 tw-gap-4 tw-mb-6">
+  <div class="lg:tw-col-span-6">
+    <div class="chart-card">
+      <div class="chart-card-head">
+        <div>
+          <h6 class="chart-card-title"><i class="bi bi-bar-chart-line"></i>Top Congested Roads</h6>
+          <div class="chart-card-sub">Top 5, ranked by congestion %</div>
+        </div>
+        <div class="chart-filter-group">
+          <select class="chart-filter-select" [ngModel]="topRoadsZone" (ngModelChange)="onTopRoadsZoneChange($event)">
+            <option *ngFor="let z of zoneOptions" [value]="z">{{ z }}</option>
+          </select>
+          <select class="chart-filter-select" [ngModel]="topRoadsRange" (ngModelChange)="onTopRoadsRangeChange($event)">
+            <option *ngFor="let r of rangeOptions" [value]="r.value">{{ r.label }}</option>
+          </select>
+        </div>
+      </div>
+      <app-echart *ngIf="topCongestedRoads.length" [option]="topRoadsOption" height="240px"></app-echart>
+      <div class="chart-empty" *ngIf="!topCongestedRoads.length">
+        <i class="bi bi-signpost-2"></i>No data for {{ topRoadsZone }}
+      </div>
+    </div>
+  </div>
+
+  <div class="lg:tw-col-span-6">
+    <div class="chart-card">
+      <div class="chart-card-head">
+        <div>
+          <h6 class="chart-card-title"><i class="bi bi-bar-chart"></i>Zone-wise Congestion</h6>
+          <div class="chart-card-sub">Comparison across city zones</div>
+        </div>
+        <div class="chart-filter-group">
+          <select class="chart-filter-select" [ngModel]="zoneCongestionZone" (ngModelChange)="onZoneCongestionZoneChange($event)">
+            <option *ngFor="let z of zoneOptions" [value]="z">{{ z }}</option>
+          </select>
+          <select class="chart-filter-select" [ngModel]="zoneRange" (ngModelChange)="onZoneRangeChange($event)">
+            <option *ngFor="let r of rangeOptions" [value]="r.value">{{ r.label }}</option>
+          </select>
+        </div>
+      </div>
+      <app-echart *ngIf="zoneCongestion.length" [option]="zoneCongestionOption" height="240px"></app-echart>
+      <div class="chart-empty" *ngIf="!zoneCongestion.length">
+        <i class="bi bi-signpost-2"></i>No data for {{ zoneCongestionZone }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Row 3: Critical Alerts + Current Peak Traffic Areas -->
+<div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-12 tw-gap-4 tw-mb-6">
+  <!-- <div class="lg:tw-col-span-6">
+    <div class="table-card tw-h-full" id="section-critical-alerts">
+      <h6 class="table-card-title">
+        <i class="bi bi-broadcast tw-text-danger"></i>Critical Alerts
+        <span class="title-count" *ngIf="criticalAlerts.length">{{ criticalAlerts.length }}</span>
+      </h6>
+      <div class="alert-list">
+        <div class="alert-row" *ngFor="let a of criticalAlerts" [class.alert-row--critical]="a.severity==='critical'" [class.alert-row--warning]="a.severity==='warning'">
+          <div class="alert-row-icon">
+            <i class="bi" [class.bi-exclamation-octagon-fill]="a.severity==='critical'" [class.bi-exclamation-triangle-fill]="a.severity==='warning'"></i>
+          </div>
+          <div class="alert-row-main">
+            <div class="alert-row-title">{{ a.title }}</div>
+            <div class="alert-row-detail">{{ a.detail }}</div>
+            <div class="alert-row-meta">{{ a.junction }} · {{ a.time }}</div>
+          </div>
+          <span class="alert-row-sev" [class.alert-row-sev--critical]="a.severity==='critical'" [class.alert-row-sev--warning]="a.severity==='warning'">
+            {{ a.severity === 'critical' ? 'Critical' : 'Warning' }}
+          </span>
+        </div>
+        <div class="empty-row" *ngIf="!criticalAlerts.length">No critical alerts right now</div>
+      </div>
+    </div>
+  </div> -->
+
+  <div class="lg:tw-col-span-6">
+    <div class="table-card tw-h-full">
+      <h6 class="table-card-title"><i class="bi bi-clock-history tw-text-warning"></i>Current Peak Traffic Areas</h6>
+      <div class="peak-grid">
+        <div class="peak-card" *ngFor="let p of peakAreas">
+          <div class="peak-card-top">
+            <div class="peak-card-name">{{ p.area }}</div>
+            <span class="badge badge-{{ bandFor(p.congestionPct) }}">{{ p.congestionPct }}%</span>
+          </div>
+          <div class="peak-card-delta"><i class="bi bi-arrow-up-short"></i>{{ p.deltaVsTypical }}% vs typical</div>
+          <div class="peak-card-window"><i class="bi bi-clock"></i>{{ p.window }}</div>
+        </div>
+        <div class="empty-row" *ngIf="!peakAreas.length">No peak areas detected</div>
+      </div>
+    </div>
+  </div>
+    <div class="lg:tw-col-span-6">
+    <div class="table-card tw-h-full" id="section-attention-junctions">
+      <h6 class="table-card-title">
+        <i class="bi bi-exclamation-triangle tw-text-danger"></i>Junctions Requiring Immediate Attention
+        <span class="title-count" *ngIf="attentionJunctions.length">{{ attentionJunctions.length }}</span>
+      </h6>
       <div class="table-responsive">
         <table class="data-table">
           <thead>
             <tr>
               <th>Junction</th>
-              <th>Station</th>
+              <th>Congestion</th>
               <th>Delay</th>
-              <th>Status</th>
+              <th>State Duration</th>
               <th>Officers</th>
+              <th>Failures</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let d of trafficData">
-              <td class="cell-strong">{{ d.junction_name }}</td>
-              <td class="cell-muted">{{ d.station }}</td>
-              <td class="cell-strong">{{ d.delay_minutes }} min</td>
+            <tr *ngFor="let j of attentionJunctions">
+              <td class="cell-strong">{{ j.junction }}</td>
               <td>
-                <span class="badge badge-{{ d.congestion_level }}">
-                  <span class="congestion-dot dot-{{ d.congestion_level }}"></span>
-                  {{ d.congestion_level | titlecase }}
-                </span>
+                <span class="badge badge-{{ bandFor(j.congestionPct) }}">{{ j.congestionPct }}%</span>
               </td>
-              <td>{{ d.active_officers || 0 }}</td>
+              <td class="cell-strong cell-small">{{ j.delayMinutes }} min</td>
+              <td class="cell-muted cell-small">{{ j.stateDuration }}</td>
+              <td class="cell-small">{{ j.officersOnDuty }} / {{ j.officersAssigned }}</td>
+              <td class="cell-small cell-muted">{{ j.action }}</td>
             </tr>
-            <tr *ngIf="!trafficData.length">
-              <td colspan="5" class="empty-row">No data yet — click Refresh Now on Live Monitor</td>
+            <tr *ngIf="!attentionJunctions.length">
+              <td colspan="6" class="empty-row">No junctions currently need immediate attention</td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
   </div>
+</div>
 
-  <div class="lg:tw-col-span-4">
-    <div class="table-card">
-      <h6 class="table-card-title"><i class="bi bi-exclamation-triangle tw-text-warning"></i>Open Incidents</h6>
-      <div *ngFor="let inc of incidents" class="incident-row">
-        <div class="cell-strong">{{ inc.type | titlecase }}</div>
-        <div class="cell-muted">{{ inc.officer_name }} · {{ inc.junction_name }}</div>
-        <div class="incident-time">{{ inc.created_at | date:'short' }}</div>
+<!-- Row 4: Junctions Requiring Immediate Attention + Signals with Frequent Failures -->
+<!-- <div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-12 tw-gap-4">
+
+
+  <div class="lg:tw-col-span-6">
+    <div class="table-card tw-h-full" id="section-failing-signals">
+      <h6 class="table-card-title">
+        <i class="bi bi-cpu tw-text-danger"></i>Signals with Frequent Failures
+        <span class="title-count" *ngIf="signalsUnderRepairCount">{{ signalsUnderRepairCount }} under repair</span>
+      </h6>
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Junction</th>
+              <th>Signal</th>
+              <th>Failures</th>
+              <th>Last Failure</th>
+              <th>Downtime</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let f of failingSignals">
+              <td class="cell-strong">{{ f.junction }}</td>
+              <td class="cell-muted cell-small">{{ f.signalLabel }}</td>
+              <td class="cell-strong cell-small">{{ f.failures30d }}</td>
+              <td class="cell-muted cell-small">{{ f.lastFailure }}</td>
+              <td class="cell-small">{{ f.avgDowntimeMinutes }} min</td>
+              <td>
+                <span class="badge" [class.badge-heavy]="f.status==='under_repair'" [class.badge-usual]="f.status==='operational'">
+                  {{ f.status === 'under_repair' ? 'Under Repair' : 'Operational' }}
+                </span>
+              </td>
+            </tr>
+            <tr *ngIf="!failingSignals.length">
+              <td colspan="6" class="empty-row">No recurring signal failures</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      <div *ngIf="!incidents.length" class="empty-row">No open incidents</div>
     </div>
   </div>
+</div> -->
+
+<!-- Row 5: Missing / Late Duty Officers -->
+<div class="table-card tw-mt-6" id="section-duty-exceptions">
+  <h6 class="table-card-title">
+    <i class="bi bi-person-fill-exclamation tw-text-danger"></i>Missing / Late Duty Officers
+    <span class="title-count" *ngIf="dutyExceptions.length">{{ dutyExceptions.length }}</span>
+  </h6>
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Officer</th>
+          <th>Junction</th>
+          <th>Shift Start</th>
+          <th>Checked In</th>
+          <th>Variance</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let o of dutyExceptions">
+          <td>
+            <div class="cell-strong">{{ o.officer }}</div>
+            <div class="cell-faint">{{ o.badge }}</div>
+          </td>
+          <td class="cell-muted cell-small">{{ o.junction }}</td>
+          <td class="cell-muted cell-small">{{ o.shiftStart }}</td>
+          <td class="cell-small">{{ o.checkedInAt }}</td>
+          <td class="cell-strong cell-small">{{ o.variance }}</td>
+          <td>
+            <span class="badge" [class.badge-heavy]="o.status==='not_checked_in'" [class.badge-intermediate]="o.status==='late'">
+              {{ o.status === 'not_checked_in' ? 'Not Checked In' : 'Late' }}
+            </span>
+          </td>
+          <td class="cell-small cell-muted">{{ o.action }}</td>
+        </tr>
+        <tr *ngIf="!dutyExceptions.length">
+          <td colspan="7" class="empty-row">All officers checked in on time</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </div>
-</ng-container>

@@ -1,0 +1,89 @@
+<div class="topbar">
+  <h5 class="topbar-title"><i class="bi bi-clock-history"></i>Congestions History</h5>
+  <span class="tw-text-xs tw-text-text-muted">dummy data for preview</span>
+</div>
+
+<!-- Filter Bar -->
+<div class="table-card tw-mb-6">
+  <div class="tw-grid tw-grid-cols-1 sm:tw-grid-cols-2 lg:tw-grid-cols-4 tw-gap-4">
+    <div>
+      <label class="field-label">Junction</label>
+      <input class="field-input" type="text" placeholder="Search Junction name" [(ngModel)]="filters.junction" (keyup.enter)="search()" />
+    </div>
+    <div>
+      <label class="field-label">Date Range</label>
+      <div class="tw-flex tw-items-center tw-gap-2">
+        <input class="field-input" type="date" [(ngModel)]="filters.dateFrom" />
+        <span class="tw-text-xs tw-text-text-muted tw-shrink-0">~</span>
+        <input class="field-input" type="date" [(ngModel)]="filters.dateTo" />
+      </div>
+    </div>
+    <div>
+      <label class="field-label">Min Delay (mins)</label>
+      <input class="field-input" type="number" min="0" placeholder="Min. Delay" [(ngModel)]="filters.minDelay" (keyup.enter)="search()" />
+    </div>
+    <div>
+      <label class="field-label">Max Delay (mins)</label>
+      <input class="field-input" type="number" min="0" placeholder="Max. Delay" [(ngModel)]="filters.maxDelay" (keyup.enter)="search()" />
+    </div>
+  </div>
+  <div class="tw-mt-4 tw-flex tw-justify-end tw-gap-2">
+    <button class="btn-download" [disabled]="!filteredRecords.length" (click)="downloadCsv()"><i class="bi bi-download"></i>Download</button>
+    <button class="btn-search" (click)="search()"><i class="bi bi-search"></i>Search</button>
+    <button class="btn-reset" (click)="reset()"><i class="bi bi-arrow-counterclockwise"></i>Reset</button>
+  </div>
+</div>
+
+<!-- Results Table -->
+<div class="table-card">
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Junction</th>
+          <th>Traffic Coming from</th>
+          <th>Delay</th>
+          <th>Date</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let r of pagedRecords">
+          <td>
+            <span class="tw-font-bold tw-text-text">{{ r.junctionCode }}</span>
+            <span class="tw-text-border tw-mx-1.5">|</span>
+            <span class="tw-text-primary-500 tw-font-medium">{{ r.junctionName }}</span>
+          </td>
+          <td>
+            <span class="tw-font-bold tw-text-text">{{ r.fromCode }}</span>
+            <span class="tw-text-border tw-mx-1.5">|</span>
+            <span class="tw-text-primary-500 tw-font-medium">{{ r.fromName }}</span>
+          </td>
+          <td class="tw-text-[0.82rem]">{{ r.delayMinutes }} mins</td>
+          <td class="tw-text-text-muted tw-text-[0.82rem]">{{ r.date }}</td>
+          <td class="tw-text-text-muted tw-text-[0.82rem]">{{ r.time }}</td>
+        </tr>
+        <tr *ngIf="!pagedRecords.length">
+          <td colspan="5" class="tw-text-center tw-text-text-muted tw-py-6 tw-text-sm">No congestion records match these filters</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="tw-flex tw-items-center tw-justify-between tw-flex-wrap tw-gap-3 tw-mt-5 tw-pt-4 tw-border-t tw-border-border" *ngIf="filteredRecords.length">
+    <span class="tw-text-xs tw-text-text-muted">{{ filteredRecords.length }} records</span>
+    <div class="tw-flex tw-items-center tw-gap-1.5 tw-flex-wrap">
+      <button class="page-btn page-btn--nav" [disabled]="currentPage === 1" (click)="goToPage(currentPage - 1)">
+        <i class="bi bi-chevron-left"></i>Previous
+      </button>
+      <ng-container *ngFor="let p of pageNumbers">
+        <span class="tw-text-text-muted tw-px-1 tw-text-sm" *ngIf="p === '...'">…</span>
+        <button *ngIf="p !== '...'" class="page-btn" [class.page-btn--active]="p === currentPage" (click)="goToPage(p)">{{ p }}</button>
+      </ng-container>
+      <button class="page-btn page-btn--nav page-btn--next" [disabled]="currentPage === totalPages" (click)="goToPage(currentPage + 1)">
+        Next<i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
+  </div>
+</div>

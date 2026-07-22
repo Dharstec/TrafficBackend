@@ -1,0 +1,92 @@
+@use 'mixins' as m;
+
+.topbar {
+  @include m.topbar;
+}
+
+.topbar-title {
+  @include m.topbar-title;
+}
+
+.table-card {
+  @include m.table-card;
+}
+
+.data-table {
+  @include m.data-table;
+}
+
+// ── Form fields ─────────────────────────────────────────────────
+.field-label {
+  @apply tw-block tw-text-xs tw-font-semibold tw-text-text-muted tw-mb-1.5;
+}
+
+.field-input {
+  @apply tw-w-full tw-px-3 tw-py-2.5 tw-rounded-sm tw-border tw-border-border tw-bg-surface tw-text-text tw-text-sm tw-transition-colors tw-min-w-0;
+
+  &:focus {
+    @apply tw-outline-none tw-border-primary-400 tw-shadow-glow;
+  }
+}
+
+// ── Filter actions ──────────────────────────────────────────────
+.btn-download {
+  @apply tw-inline-flex tw-items-center tw-gap-1.5 tw-text-sm tw-font-semibold tw-px-5 tw-py-2.5 tw-rounded-sm tw-border tw-border-primary-400 tw-text-primary-500 tw-bg-transparent tw-transition-colors;
+
+  &:hover:not(:disabled) {
+    @apply tw-bg-primary-50;
+  }
+
+  &:disabled {
+    @apply tw-opacity-40 tw-cursor-not-allowed;
+  }
+}
+
+.btn-search {
+  @apply tw-inline-flex tw-items-center tw-gap-1.5 tw-text-sm tw-font-semibold tw-px-5 tw-py-2.5 tw-rounded-sm tw-bg-success tw-text-white tw-shadow-sm tw-transition-opacity;
+
+  &:hover {
+    @apply tw-opacity-90;
+  }
+}
+
+.btn-reset {
+  @apply tw-inline-flex tw-items-center tw-gap-1.5 tw-text-sm tw-font-semibold tw-px-5 tw-py-2.5 tw-rounded-sm tw-bg-black tw-text-white tw-shadow-sm tw-transition-opacity;
+
+  &:hover {
+    @apply tw-opacity-80;
+  }
+}
+
+// ── Pagination ──────────────────────────────────────────────────
+.page-btn {
+  @apply tw-inline-flex tw-items-center tw-gap-1 tw-min-w-[34px] tw-h-[34px] tw-px-2.5 tw-rounded-sm tw-border tw-border-border tw-bg-surface tw-text-text tw-text-xs tw-font-semibold tw-transition-colors;
+
+  &:hover:not(:disabled):not(.page-btn--active) {
+    @apply tw-border-primary-400 tw-text-primary-500;
+  }
+
+  &:disabled {
+    @apply tw-opacity-40 tw-cursor-not-allowed;
+  }
+
+  &.page-btn--active {
+    @apply tw-bg-primary-500 tw-border-transparent tw-text-white;
+  }
+
+  &.page-btn--nav {
+    @apply tw-text-text-muted;
+  }
+
+  &.page-btn--next {
+    @apply tw-bg-black tw-border-black tw-text-white;
+
+    &:hover:not(:disabled) {
+      @apply tw-opacity-80;
+    }
+
+    &:disabled {
+      @apply tw-bg-surface-alt tw-border-border tw-text-text-muted;
+    }
+  }
+}
